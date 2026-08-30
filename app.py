@@ -33,7 +33,7 @@ st.markdown("""
     .share-box { background-color: #000000; padding: 15px; border-radius: 12px; border: 1px dashed #45f3ff; margin-top: 15px; text-align: center;}
     .stButton>button { background-color: #45f3ff; color: black; font-weight: bold; border-radius: 8px; width: 100%;}
     .lock-style { background-color: #1a1a24; padding: 20px; border-radius: 10px; border: 1px solid #ff4b4b; text-align: center; margin-bottom: 20px;}
-    .forgot-box { background-color: #111115; padding: 10px; border-radius: 8px; border: 1px dashed #66fcf1; margin-top: 10px; text-align: center; color: #a7f3d0;}
+    .forgot-box { background-color: #111115; padding: 15px; border-radius: 8px; border: 2px dashed #ff4b4b; margin-top: 10px; text-align: center; color: #ff6b6b;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -48,6 +48,9 @@ if "bday_age" not in st.session_state:
     st.session_state.bday_age = 22
 if "bday_relation" not in st.session_state:
     st.session_state.bday_relation = "Best Friend"
+# State for forgot password toggle button
+if "show_admin_password" not in st.session_state:
+    st.session_state.show_admin_password = False
 
 # =====================================================================
 # 3. URL GENERATED LINK DETECTOR (DYNAMIC ROUTING)
@@ -126,26 +129,30 @@ st.markdown("---")
 tab1, tab2, tab3 = st.tabs(["⚙️ PANEL 1: Admin Form (Locked)", "🖼️ PANEL 2: Design Card Maker (Locked)", "🎬 PANEL 3: Cinematic Video Studio (Locked)"])
 
 # =====================================================================
-# PANEL 1: ADMIN CONTROL METADATA FORM (Error Fixed)
+# PANEL 1: ADMIN CONTROL METADATA FORM (With Button Toggle Password View)
 # =====================================================================
 with tab1:
     st.header("⚙️ PANEL 1: Master Registration Dashboard")
-    # Fixed: Added parameter 2 inside columns function
     p1_col1, p1_col2 = st.columns(2)
     with p1_col1:
         st.markdown("<div class='lock-style'><h4>🔒 Panel 1 Login</h4></div>", unsafe_allow_html=True)
-        p1_user = st.text_input("Admin ID", placeholder="e.g. admin", key="p1_uid")
-        p1_pass = st.text_input("Admin Password", type="password", placeholder="e.g. admin123", key="p1_pwd")
+        p1_user = st.selectbox("Choose Admin ID", ["-- Select ID --", "admin"], key="p1_uid")
+        p1_pass = st.text_input("Admin Password", type="password", placeholder="Enter secret password...", key="p1_pwd")
         
         st.markdown("---")
-        show_forgot = st.checkbox("🔍 Need Help / Forgot Password?", value=False)
-        
-        if show_forgot:
+        # --- BUTTON BASED HIDE/UNHIDE SYSTEM ---
+        # Button label switches automatically based on status
+        btn_label = "🙈 Hide Password Hint" if st.session_state.show_admin_password else "👁️ Show Forgot Password Hint"
+        if st.button(btn_label):
+            st.session_state.show_admin_password = not st.session_state.show_admin_password
+            st.rerun() # Refresh layout instantly
+            
+        if st.session_state.show_admin_password:
             st.markdown("""
                 <div class='forgot-box'>
-                    💡 <b>Master Recovery Hint:</b><br>
-                    ID: <code>admin</code><br>
-                    Password: <code>admin123</code>
+                    ⚠️ <b>ADMIN SECURITY BACKUP</b><br>
+                    Selected ID: <code>admin</code><br>
+                    Master Key: <code>admin123</code>
                 </div>
             """, unsafe_allow_html=True)
     
@@ -164,26 +171,27 @@ with tab1:
                 st.session_state.bday_relation = form_relation
                 st.success("🎉 Metadata processing complete! Panel 2 and 3 updated.")
         else:
-            if p1_user != "" or p1_pass != "": st.error("❌ Galat Admin ID ya Password!")
-            st.warning("⚠️ Password daal kar form unlock kijiye.")
+            if p1_user != "-- Select ID --" and p1_pass != "": 
+                st.error("❌ Invalid Password Entry!")
+            st.warning("⚠️ Scroll list se ID chunein aur apna secret token daal kar panel access kijiye.")
 
 # =====================================================================
 # PANEL 2: DESIGN CARD MAKER (ONLY PANEL 2 CONTROL NODE)
 # =====================================================================
 with tab2:
     st.header("🖼️ PANEL 2: High-Res Designer Card Frame Generator")
-    # Columns fixed with parameter 2
+    # Columns structure set to prevent standard system crashing
     p2_col1, p2_col2 = st.columns(2)
     
     with p2_col1:
         st.markdown("<div class='lock-style'><h4>🔒 Panel 2 Login</h4></div>", unsafe_allow_html=True)
-        p2_user = st.text_input("Card User ID", placeholder="e.g. carduser", key="p2_uid")
-        p2_pass = st.text_input("Card Password", type="password", placeholder="e.g. card123", key="p2_pwd")
+        # Dropdown selection for unique panel user credentials authentication
+        p2_user = st.selectbox("Choose Card User ID", ["-- Select ID --", "carduser"], key="p2_uid")
+        p2_pass = st.text_input("Card Password", type="password", placeholder="Enter secret password...", key="p2_pwd")
         
     with p2_col2:
         if p2_user == "carduser" and p2_pass == "card123":
             st.success("🔓 Panel 2 Access Granted!")
-            # Sub-columns fixed with parameter 2
             c1, c2 = st.columns(2)
             
             with c1:
@@ -191,6 +199,7 @@ with tab2:
                 selected_design = st.selectbox("Choose Layout Template:", ["🏆 Royal Midnight Gold", "💖 Cyber Neon Glow", "🍂 Classic Golden Vintage"])
                 template_slug = "gold" if "Royal" in selected_design else "neon" if "Cyber" in selected_design else "vintage"
                 
+                # Fetching strings synchronized automatically by Panel 1 form values
                 wishes_bank = [
                     f"Happy Birthday to my wonderful {st.session_state.bday_relation}! May your {st.session_state.bday_age}th year bring endless laughter!",
                     f"Cheers to another gorgeous year! Happy Birthday {st.session_state.bday_name}, the best {st.session_state.bday_relation} ever.",
@@ -232,7 +241,6 @@ with tab2:
                         
                     st.markdown("<div class='share-box'>", unsafe_allow_html=True)
                     st.subheader("📥 Export & Distribution Nodes")
-                    # Action columns fixed with parameter 2
                     col_b1, col_b2 = st.columns(2)
                     
                     with col_b1:
@@ -246,31 +254,32 @@ with tab2:
                     st.markdown(f'<a href="{wa_api_url}" target="_blank"><button style="background-color:#25D366; color:white; border-radius:8px; padding:10px; width:100%; border:none; font-weight:bold; cursor:pointer;">📲 Direct Share To WhatsApp</button></a>', unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
         else:
-            if p2_user != "" or p2_pass != "": 
-                st.error("❌ Galat User ID ya Password!")
-            st.warning("⚠️ Card Maker Panel locked hai. Password dalkar open kijiye.")
+            if p2_user != "-- Select ID --" and p2_pass != "": 
+                st.error("❌ Invalid Secret Key!")
+            st.warning("⚠️ Card Maker Panel locked hai. Dropdown se ID select karke password daalein.")
 
 # =====================================================================
-# PANEL 3: CINEMATIC VIDEO STUDIO (ONLY PANEL 3 CONTROL NODE - FIXED)
+# PANEL 3: CINEMATIC VIDEO STUDIO (ONLY PANEL 3 CONTROL NODE)
 # =====================================================================
 with tab3:
     st.header("🎬 PANEL 3: Premium AI Lyrical Video & Voice Studio")
-    # Columns fixed with parameter 2
+    # Columns structure set to prevent standard system crashing
     p3_col1, p3_col2 = st.columns(2)
     
     with p3_col1:
         st.markdown("<div class='lock-style'><h4>🔒 Panel 3 Login</h4></div>", unsafe_allow_html=True)
-        p3_user = st.text_input("Video User ID", placeholder="e.g. videouser", key="p3_uid")
-        p3_pass = st.text_input("Video Password", type="password", placeholder="e.g. video123", key="p3_pwd")
+        # Dropdown selection list for User ID parameter node
+        p3_user = st.selectbox("Choose Video User ID", ["-- Select ID --", "videouser"], key="p3_uid")
+        p3_pass = st.text_input("Video Password", type="password", placeholder="Enter secret password...", key="p3_pwd")
         
     with p3_col2:
         if p3_user == "videouser" and p3_pass == "video123":
             st.success("🔓 Panel 3 Access Granted!")
-            # Sub-columns fixed with parameter 2
             v1, v2 = st.columns(2)
             
             with v1:
                 st.markdown("### 🎛️ AI Voice & Music Pipeline Settings")
+                # Fetching real-time parameters synchronized automatically by Panel 1 form values
                 st.write(f"👤 **Target Profile:** Name: `{st.session_state.bday_name}` | Gender: `{st.session_state.bday_gender}` | Age: `{st.session_state.bday_age}`")
                 
                 selected_singer = st.selectbox("🎙️ Select AI Singer Voice:", ["🎵 Arijit Singh AI Vocal Engine", "🎵 Neha Kakkar AI Vocal Engine", "🎵 Sonu Nigam AI Vocal Engine"])
@@ -285,6 +294,7 @@ with tab3:
                         st.markdown("<div class='video-monitor'>", unsafe_allow_html=True)
                         st.markdown(f"<h3 style='color:#38bdf8 !important; margin:0;'>🎬 SLIDESHOW INTERFACE ENABLED</h3>", unsafe_allow_html=True)
                         
+                        # Audio custom tracking files mapper logic block
                         if singer_slug == "Arijit":
                             audio_url = "https://soundhelix.com"
                             voice_tag = "Arijit Singh AI"
@@ -295,9 +305,10 @@ with tab3:
                             audio_url = "https://soundhelix.com"
                             voice_tag = "Sonu Nigam AI"
                         
+                        # Direct audio synthesizer playback engine activation
                         st.audio(audio_url, format="audio/mp3", autoplay=True)
                         
-                        # Action columns fixed with parameter min()
+                        # Slice array index tracking map matrix configuration
                         grid_cols = st.columns(min(len(bulk_photos), 4))
                         for index, photo_file in enumerate(bulk_photos[:4]):
                             with grid_cols[index]: 
@@ -306,12 +317,12 @@ with tab3:
                         
                         st.markdown("<div class='share-box'>", unsafe_allow_html=True)
                         st.subheader("📥 Export & Share Video Option Node")
-                        # Export action columns fixed with parameter 2
                         v_col1, v_col2 = st.columns(2)
                         
                         with v_col1:
                             st.download_button(label="💾 Download Full Video (HD MP4)", data=b"MockVideoData", file_name=f"{st.session_state.bday_name}_video.mp4", mime="video/mp4")
                         with v_col2:
+                            # Dynamic unique view parameters constructor matching SaaS URL logic rules
                             real_video_link = f"https://streamlit.app{st.session_state.bday_name.replace(' ', '%20')}&age={st.session_state.bday_age}&relation={st.session_state.bday_relation.replace(' ', '%20')}&singer={singer_slug}"
                             st.info("🕒 Generated 24Hrs Active Cloud Link:")
                             st.code(real_video_link, language="text")
@@ -322,7 +333,7 @@ with tab3:
                     else:
                         st.error("❌ Kam se kam 2 photos upload karein!")
         else:
-            if p3_user != "" or p3_pass != "": 
-                st.error("❌ Galat User ID ya Password!")
-            st.warning("⚠️ Video Studio Panel locked hai. Password dalkar open kijiye.")
+            if p3_user != "-- Select ID --" and p3_pass != "": 
+                st.error("❌ Invalid Password Entry!")
+            st.warning("⚠️ Video Studio Panel locked hai. Dropdown se ID select karke password daalein.")
         
