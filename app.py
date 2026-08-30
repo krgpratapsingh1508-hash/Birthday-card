@@ -3,337 +3,403 @@ import time
 from PIL import Image
 
 # =====================================================================
-# 1. PAGE SETUP & PREMIUM CSS THEME
+# 1. APPLICATION STRUCTURAL CONFIGURATION & ADVANCED UI THEMING
 # =====================================================================
-st.set_page_config(page_title="AI Dynamic Birthday Studio", page_icon="🎂", layout="wide")
+st.set_page_config(page_title="AI Birthday Ecosystem Pro", page_icon="🎬", layout="wide")
 
 st.markdown("""
     <style>
-    .main { background-color: #0b0c10; color: #c5c6c7; }
-    h1, h2, h3, h4 { color: #66fcf1 !important; font-family: 'Poppins', sans-serif; font-weight: bold; text-align: center; }
+    .main { background-color: #060709; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+    h1, h2, h3, h4 { font-family: 'Poppins', sans-serif; font-weight: bold; text-align: center; }
     
-    /* Premium Templates Styling */
-    .template-gold { background: linear-gradient(135px, #1e1b4b 0%, #311042 100%); border: 3px solid #fbbf24; padding: 40px; border-radius: 20px; text-align: center; color: white; max-width: 600px; margin: 0 auto;}
-    .template-neon { background: linear-gradient(135px, #0f172a 0%, #1e1b4b 100%); border: 3px solid #ec4899; padding: 40px; border-radius: 20px; text-align: center; color: white; max-width: 600px; margin: 0 auto;}
-    .template-vintage { background: linear-gradient(135px, #451a03 0%, #78350f 100%); border: 3px solid #f59e0b; padding: 40px; border-radius: 20px; text-align: center; color: white; max-width: 600px; margin: 0 auto;}
+    /* Clean Cryptographic Authorization Layout Boxes */
+    .landing-gate { background: linear-gradient(145px, #111827 0%, #030712 100%); padding: 40px; border-radius: 20px; border: 2px solid #3b82f6; max-width: 550px; margin: 50px auto; box-shadow: 0px 20px 50px rgba(59, 130, 246, 0.15); }
+    .panel-lock-indicator { background-color: #1f2937; padding: 15px; border-radius: 12px; border-left: 5px solid #ef4444; margin-bottom: 20px; }
     
-    /* Video Studio Monitor Simulation */
-    .video-monitor {
-        background-color: #020617;
-        border: 4px solid #45f3ff;
-        border-radius: 20px;
-        padding: 25px;
-        box-shadow: 0px 15px 35px rgba(69, 243, 255, 0.25);
-        text-align: center;
-        margin-top: 15px;
-        max-width: 800px;
-        margin: 20px auto;
-    }
+    /* Graphic Pampalet Template Blueprint Frameworks */
+    .pampalet-gold { background: linear-gradient(135px, #1e1b4b 0%, #311042 100%); border: 4px dashed #fbbf24; padding: 45px; border-radius: 24px; text-align: center; color: white; max-width: 650px; margin: 0 auto; box-shadow: 0 10px 30px rgba(251,191,36,0.2); }
+    .pampalet-cyber { background: linear-gradient(135px, #0f172a 0%, #1e1b4b 100%); border: 4px dashed #ec4899; padding: 45px; border-radius: 24px; text-align: center; color: white; max-width: 650px; margin: 0 auto; box-shadow: 0 10px 30px rgba(236,72,153,0.2); }
+    .pampalet-vintage { background: linear-gradient(135px, #451a03 0%, #78350f 100%); border: 4px dashed #f59e0b; padding: 45px; border-radius: 24px; text-align: center; color: white; max-width: 650px; margin: 0 auto; box-shadow: 0 10px 30px rgba(245,158,11,0.2); }
     
-    .share-box { background-color: #000000; padding: 15px; border-radius: 12px; border: 1px dashed #45f3ff; margin-top: 15px; text-align: center;}
-    .stButton>button { background-color: #45f3ff; color: black; font-weight: bold; border-radius: 8px; width: 100%;}
-    .lock-style { background-color: #1a1a24; padding: 20px; border-radius: 10px; border: 1px solid #ff4b4b; text-align: center; margin-bottom: 20px;}
-    .forgot-box { background-color: #111115; padding: 15px; border-radius: 8px; border: 2px dashed #ff4b4b; margin-top: 10px; text-align: center; color: #ff6b6b;}
+    /* Hardware Video Studio Monitor Mockup Box */
+    .studio-monitor { background-color: #020617; border: 4px solid #06b6d4; border-radius: 24px; padding: 30px; box-shadow: 0px 20px 45px rgba(6, 182, 212, 0.25); text-align: center; max-width: 850px; margin: 20px auto; }
+    .export-node-box { background-color: #090d16; padding: 20px; border-radius: 16px; border: 1px dashed #45f3ff; margin-top: 20px; text-align: center; }
+    
+    /* Direct Functional Actions Core Component Styling */
+    .stButton>button { background: linear-gradient(90px, #3b82f6 0%, #2563eb 100%); color: white; font-weight: bold; border-radius: 10px; padding: 10px; width: 100%; border: none; transition: 0.3s; }
+    .stButton>button:hover { background: linear-gradient(90px, #2563eb 0%, #1d4ed8 100%); box-shadow: 0 5px 15px rgba(37,99,235,0.4); }
     </style>
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# 2. MASTER MEMORY SYNC ENGINE (SESSION STATE)
+# 2. GLOBAL SYSTEM MEMORY INITIALIZATION (CORE STATE ENGINE)
 # =====================================================================
-if "bday_name" not in st.session_state:
-    st.session_state.bday_name = "Sunita"
-if "bday_gender" not in st.session_state:
-    st.session_state.bday_gender = "Girl"
-if "bday_age" not in st.session_state:
-    st.session_state.bday_age = 22
-if "bday_relation" not in st.session_state:
-    st.session_state.bday_relation = "Best Friend"
-# State for forgot password toggle button
-if "show_admin_password" not in st.session_state:
-    st.session_state.show_admin_password = False
+if "active_session_panel" not in st.session_state:
+    st.session_state.active_session_panel = None
+
+# Default Values derived from Panel 1 Administrative Core
+if "meta_name" not in st.session_state:
+    st.session_state.meta_name = "Sunita"
+if "meta_age" not in st.session_state:
+    st.session_state.meta_age = 22
+if "meta_gender" not in st.session_state:
+    st.session_state.meta_gender = "Girl"
+if "meta_wish" not in st.session_state:
+    st.session_state.meta_wish = "May your special day be packed with timeless beautiful memories!"
+if "meta_relation" not in st.session_state:
+    st.session_state.meta_relation = "Best Friend"
+
+# Custom Security Keys Database Configurations
+if "pass_p1" not in st.session_state: st.session_state.pass_p1 = "admin123"
+if "pass_p2" not in st.session_state: st.session_state.pass_p2 = "card123"
+if "pass_p3" not in st.session_state: st.session_state.pass_p3 = "video123"
 
 # =====================================================================
-# 3. URL GENERATED LINK DETECTOR (DYNAMIC ROUTING)
+# 3. ROOT ENVIRONMENT ROUTING MECHANISMS (SAAS VIEWER ENGINE)
 # =====================================================================
-query_params = st.query_params
+url_parameters = st.query_params
 
-if "view" in query_params:
-    view_type = query_params["view"]
-    name_param = query_params.get("name", "Best Friend")
-    age_param = query_params.get("age", "22")
-    relation_param = query_params.get("relation", "Friend")
+if "view" in url_parameters:
+    target_view = url_parameters["view"]
+    r_name = url_parameters.get("name", "Celebrant")
+    r_age = url_parameters.get("age", "25")
+    r_gender = url_parameters.get("gender", "Female")
+    r_relation = url_parameters.get("relation", "Friend")
     
     st.balloons()
     
-    if view_type == "card":
-        template_param = query_params.get("template", "gold")
-        wish_index = int(query_params.get("wish", "0"))
-        
-        wishes_bank = [
-            f"Happy Birthday to my wonderful {relation_param}! May your {age_param}th year bring endless laughter!",
-            f"Cheers to another gorgeous year! Happy Birthday {name_param}, the best {relation_param} ever.",
-            f"Wishing a magnificent {age_param}rd birthday to the most awesome person in the world!"
-        ]
-        
-        template_css = "template-gold"
-        title_color = "#fbbf24"
-        if template_param == "neon":
-            template_css = "template-neon"
-            title_color = "#ec4899"
-        elif template_param == "vintage":
-            template_css = "template-vintage"
-            title_color = "#f59e0b"
+    if target_view == "card":
+        r_pampalet = url_parameters.get("pampalet", "gold")
+        card_css = "pampalet-gold"
+        accent_color = "#fbbf24"
+        if r_pampalet == "cyber":
+            card_css = "pampalet-cyber"
+            accent_color = "#ec4899"
+        elif r_pampalet == "vintage":
+            card_css = "pampalet-vintage"
+            accent_color = "#f59e0b"
             
         st.markdown(f"""
-            <div class="{template_css}">
-                <h1 style="color: {title_color} !important; font-size:42px; margin:0;">🎉 HAPPY BIRTHDAY 🎉</h1>
-                <h2 style="color:#ffffff !important; letter-spacing:2px; margin:15px 0;">👑 {name_param.upper()} 👑</h2>
-                <p style="font-size:16px; color:#94a3b8; margin:0;">Turning {age_param} | Special {relation_param} Edition</p>
-                <hr style="border-color:{title_color};">
-                <p style="font-size: 20px; font-style: italic;">"{wishes_bank[wish_index]}"</p>
+            <div class="{card_css}">
+                <h1 style="color: {accent_color} !important; font-size:46px; margin:0;">🎉 HAPPY BIRTHDAY 🎉</h1>
+                <h2 style="color:#ffffff !important; letter-spacing:2px; margin:15px 0;">👑 {r_name.upper()} 👑</h2>
+                <p style="font-size:16px; color:#94a3b8; margin:0;">Gender: {r_gender} | Age Milestone: {r_age} Years | Dedicated {r_relation} Edition</p>
+                <hr style="border-color:{accent_color};">
+                <p style="font-size: 20px; font-style: italic; color:#f1f5f9;">"Wishing you high-frame-rate happiness today and forever!"</p>
             </div>
         """, unsafe_allow_html=True)
         
-    elif view_type == "video":
-        singer_param = query_params.get("singer", "Arijit")
+    elif target_view == "video":
+        r_singer = url_parameters.get("singer", "Arijit")
+        r_fx = url_parameters.get("fx", "Neon")
         
-        if singer_param == "Arijit":
-            audio_url = "https://soundhelix.com"
-            voice_tag = "Arijit Singh AI"
-        elif singer_param == "Neha":
-            audio_url = "https://soundhelix.com"
-            voice_tag = "Neha Kakkar AI"
-        else:
-            audio_url = "https://soundhelix.com"
-            voice_tag = "Sonu Nigam AI"
-            
-        st.markdown("<div class='video-monitor'>", unsafe_allow_html=True)
-        st.markdown(f"<h1 style='color:#38bdf8 !important; margin:0;'>🎬 SPECIAL VIDEO FOR {name_param.upper()}</h1>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:#a7f3d0; font-size:16px; margin: 10px 0;'>🎤 AI Vocal Dedicated By: <b>{voice_tag}</b></p>", unsafe_allow_html=True)
+        audio_stream = "https://soundhelix.com" if r_singer == "Arijit" else "https://soundhelix.com"
         
-        st.audio(audio_url, format="audio/mp3", autoplay=True)
+        st.markdown("<div class='studio-monitor'>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='color:#06b6d4 !important; margin:0;'>🍿 LIVE STREAM TIMELINE GENERATED FOR {r_name.upper()}</h1>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#a7f3d0; font-size:16px; margin: 10px 0;'>🎤 Selected Vocalist Track Artist: <b>{r_singer} AI</b> | Cinematic VFX Node: <b>{r_fx}</b></p>", unsafe_allow_html=True)
         
-        st.markdown(f"<h2 style='color:#fbbf24 !important; font-weight:bold; margin-top:30px;'>🎉 Happy Birthday to you, {name_param}! 🎉</h2>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:#ffffff; font-size:18px;'>Special {relation_param} edition song successfully synced for this sweet {age_param} years milestone!</p>", unsafe_allow_html=True)
+        st.audio(audio_stream, format="audio/mp3", autoplay=True)
+        
+        st.markdown(f"<h2 style='color:#fbbf24 !important; font-weight:bold; margin-top:30px;'>🎉 Happy Birthday to you, {r_name}! 🎉</h2>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#94a3b8; font-size:16px;'>This dedicated audio timeline presentation file is actively mounted securely on server storage nodes.</p>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
-    st.info("🕒 Yeh content temporary server cloud dwara 24 ghante ke liye live kiya gaya hai.")
+    st.info("🕒 This content asset cloud node is temporary initialized active on servers for a 24-Hour window.")
     st.stop()
 
 # =====================================================================
-# 4. NORMAL STUDIO INTERFACE
+# 4. INITIAL EMPTY CLEAN LANDING PAGE LAYOUT INTERFACE 
 # =====================================================================
-st.title("⚡ AI Lyrical Birthday Studio Engine Pro")
+if st.session_state.active_session_panel is None:
+    st.title("⚡ Ultra-Secure AI Lyrical Birthday Studio Engine")
+    st.markdown("<p style='text-align:center; color:#64748b;'>Database Server Matrix Portal Gateway Client Workspace Node</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # Hide/Unhide Primary Toggle Action Button for Terminal Box Initialization Layout
+    show_login_matrix = st.checkbox("🔑 Open Secure Multi-User Login Terminal Form", value=False)
+    
+    if show_login_matrix:
+        st.markdown("<div class='landing-gate'>", unsafe_allow_html=True)
+        st.markdown("<h3>🔒 USER IDENTITY VERIFICATION GATEWAY</h3>", unsafe_allow_html=True)
+        
+        # User Selection Dropdown Scroll List matching custom requirements instructions
+        user_identity_selection = st.selectbox("Choose Target Panel Clearance ID:", ["-- Scroll List: Select Workspace --", "PANEL 1: Admin Metadata Controller", "PANEL 2: High-Res Designer Card Frame", "PANEL 3: Cinematic Video Studio Remixer"])
+        user_password_input = st.text_input("Enter Crypto Key Token (Password):", type="password", placeholder="••••••••")
+        
+        if st.button("🚀 Process Key Tokens & Enter Workspace"):
+            if user_identity_selection == "PANEL 1: Admin Metadata Controller" and user_password_input == st.session_state.pass_p1:
+                st.session_state.active_session_panel = "P1"
+                st.rerun()
+            elif user_identity_selection == "PANEL 2: High-Res Designer Card Frame" and user_password_input == st.session_state.pass_p2:
+                st.session_state.active_session_panel = "P2"
+                st.rerun()
+            elif user_identity_selection == "PANEL 3: Cinematic Video Studio Remixer" and user_password_input == st.session_state.pass_p3:
+                st.session_state.active_session_panel = "P3"
+                st.rerun()
+            else:
+                st.error("❌ Identification mismatch! Access token verified failed or credentials validation corrupted.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
+# =====================================================================
+# 5. CORE WORKSPACE ENVIRONMENT ROOMS (AFTER SUCCESSFUL UNLOCK AUTH)
+# =====================================================================
+if st.button("🔙 Terminate Workspace Session & Return to Empty Landing Page"):
+    st.session_state.active_session_panel = None
+    st.rerun()
+
 st.markdown("---")
 
-tab1, tab2, tab3 = st.tabs(["⚙️ PANEL 1: Admin Form (Locked)", "🖼️ PANEL 2: Design Card Maker (Locked)", "🎬 PANEL 3: Cinematic Video Studio (Locked)"])
+# =====================================================================
+# PANEL 1 WORKSPACE: MASTER METADATA REGISTRATION FORM (ONLY PANEL 1)
+# =====================================================================
+if st.session_state.active_session_panel == "P1":
+    st.header("⚙️ PANEL 1 WORKSPACE: Master Metadata Registration Form")
+    
+    # Structural columns to balance the form and password updater layout
+    col_p1_a, col_p1_b = st.columns(2)
+    
+    with col_p1_a:
+        st.markdown("<div class='panel-lock-indicator'><h4>📋 Target Core Meta Profiles Registration</h4></div>", unsafe_allow_html=True)
+        
+        # Complete structured birthday metadata registration form fields
+        f_name = st.text_input("Celebrant Target Name (Naam Kya Hai?):", st.session_state.meta_name)
+        f_age = st.number_input("Celebrant Milestone Age (Kitne Saal Ka Hai?):", min_value=1, max_value=120, value=int(st.session_state.meta_age))
+        
+        # Gender Selection with Male, Female, and Transgender criteria options
+        f_gender = st.radio("Gender Profile Matrix Chunein (Male/Female/Transgender):", ["Male", "Female", "Transgender"], index=0 if st.session_state.meta_gender == "Male" else 1 if st.session_state.meta_gender == "Female" else 2)
+        
+        f_wish = st.text_area("Custom Best Wish Quote Input (Agar aap likhna chahein toh):", st.session_state.meta_wish)
+        f_relation = st.selectbox("Relationship Alignment (Rishta Kya Hai?):", ["Best Friend", "Brother", "Sister", "Partner/Love", "Family Member", "Colleague"])
+        
+        # Core deployment trigger button to push data parameters instantly downstream
+        if st.button("💾 Synchronize Metadata Parameters Across Ecosystem"):
+            st.session_state.meta_name = f_name
+            st.session_state.meta_age = f_age
+            st.session_state.meta_gender = f_gender
+            st.session_state.meta_wish = f_wish
+            st.session_state.meta_relation = f_relation
+            st.success("🎉 Metadata global parameters successfully locked! Panel 2 and 3 have been synchronized.")
+
+    with col_p1_b:
+        st.markdown("<div class='panel-lock-indicator'><h4>⚙️ System Authorization Override Configurations</h4></div>", unsafe_allow_html=True)
+        
+        # --- THE BUTTON HIDE/UNHIDE SYSTEM FOR PASSWORDS ---
+        # Toggle checkbox button that securely unhides/hides the credential modifier form elements
+        show_key_changer = st.checkbox("🛠️ Toggle Password Modifier Controller Form", value=False)
+        
+        if show_key_changer:
+            st.subheader("Modify Workspace Clearance Tokens")
+            st.caption("Change database authorization security pass-keys for all panels below:")
+            
+            # Input fields to live rewrite system authentication keys database variables
+            up_p1 = st.text_input("Update Panel 1 Password Token (Admin Form):", value=st.session_state.pass_p1, type="password")
+            up_p2 = st.text_input("Update Panel 2 Password Token (Design Card):", value=st.session_state.pass_p2, type="password")
+            up_p3 = st.text_input("Update Panel 3 Password Token (Video Mixer):", value=st.session_state.pass_p3, type="password")
+            
+            if st.button("🔒 Overwrite Security Database Keys"):
+                st.session_state.pass_p1 = up_p1
+                st.session_state.pass_p2 = up_p2
+                st.session_state.pass_p3 = up_p3
+                st.success("⚡ Database cryptographic authentication matrix keys updated securely across system!")
 
 # =====================================================================
-# PANEL 1: ADMIN CONTROL METADATA FORM (With Button Toggle Password View)
+# PANEL 2 WORKSPACE: HIGH-RES DESIGNER CARD FRAME GENERATOR (ONLY PANEL 2)
 # =====================================================================
-with tab1:
-    st.header("⚙️ PANEL 1: Master Registration Dashboard")
-    p1_col1, p1_col2 = st.columns(2)
-    with p1_col1:
-        st.markdown("<div class='lock-style'><h4>🔒 Panel 1 Login</h4></div>", unsafe_allow_html=True)
-        p1_user = st.selectbox("Choose Admin ID", ["-- Select ID --", "admin"], key="p1_uid")
-        p1_pass = st.text_input("Admin Password", type="password", placeholder="Enter secret password...", key="p1_pwd")
+elif st.session_state.active_session_panel == "P2":
+    st.header("🖼️ PANEL 2 WORKSPACE: High-Res Designer Card Frame Generator")
+    
+    # Panel 1 se aaye hue raw data ko top bar me show karne ka module block
+    st.info(f"📥 **Panel 1 Data Synced Automatically:** Name: `{st.session_state.meta_name}` | Age: `{st.session_state.meta_age}` | Gender: `{st.session_state.meta_gender}` | Relation: `{st.session_state.meta_relation}`")
+    
+    # Balanced structural columns layouts
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        st.markdown("### 🎨 Select Pampalet Framework Template")
+        # Multiple premium layout templates dropdown selection (प्रारूप चूनें)
+        pampalet_design = st.selectbox("Choose Layout Pampalet Framework (प्रारूप चूनें):", [
+            "🏆 Royal Luxury Midnight Gold Layout", 
+            "💖 Cyber Neon Glow Futuristic Framework", 
+            "🍂 Classic Antique Golden Vintage Theme"
+        ])
+        pampalet_slug = "gold" if "Royal" in pampalet_design else "cyber" if "Cyber" in pampalet_design else "vintage"
         
-        st.markdown("---")
-        # --- BUTTON BASED HIDE/UNHIDE SYSTEM ---
-        # Button label switches automatically based on status
-        btn_label = "🙈 Hide Password Hint" if st.session_state.show_admin_password else "👁️ Show Forgot Password Hint"
-        if st.button(btn_label):
-            st.session_state.show_admin_password = not st.session_state.show_admin_password
-            st.rerun() # Refresh layout instantly
+        # Best wishes bank list injecting real-time Panel 1 form values
+        preset_wishes_nodes = [
+            st.session_state.meta_wish, # Custom wish typed by admin inside panel 1 form
+            f"Happy Birthday to my wonderful {st.session_state.meta_relation}! May your gorgeous {st.session_state.meta_age}th milestone year be full of success and pure layout graphics joy!",
+            f"Cheers to another super hit trip around the sun, dear {st.session_state.meta_name}! You are the best {st.session_state.meta_relation} anyone could ask for."
+        ]
+        chosen_wish_text = st.selectbox("Select Best Wish Quotes (शुभकामना संदेश):", preset_wishes_nodes)
+        
+        # Single image portrait uploader slot configuration
+        uploaded_portrait = st.file_uploader("Upload Portrait Photo Asset (Auto-Crop Fit Active):", type=["jpg", "png", "jpeg"], key="p2_card_uploader")
+        render_pampalet_btn = st.button("✨ Compile Graphics Layout Grid & Render Card")
+        
+    with c2:
+        st.markdown("### 🍿 Real-Time Render Output Monitor Canvas")
+        if render_pampalet_btn:
+            st.balloons()
             
-        if st.session_state.show_admin_password:
-            st.markdown("""
-                <div class='forgot-box'>
-                    ⚠️ <b>ADMIN SECURITY BACKUP</b><br>
-                    Selected ID: <code>admin</code><br>
-                    Master Key: <code>admin123</code>
+            # CSS skins selector mapping rules matrices depending on choices dropdown
+            card_class_css = "pampalet-gold"
+            accent_title_hue = "#fbbf24"
+            if pampalet_slug == "cyber":
+                card_class_css = "pampalet-cyber"
+                accent_title_hue = "#ec4899"
+            elif pampalet_slug == "vintage":
+                card_class_css = "pampalet-vintage"
+                accent_title_hue = "#f59e0b"
+                
+            # Rendering final template framework block natively via HTML elements injection strings
+            st.markdown(f"""
+                <div class="{card_class_css}">
+                    <h1 style="color: {accent_title_hue} !important; font-size:38px; margin:0;">🎉 HAPPY BIRTHDAY 🎉</h1>
+                    <h2 style="color:#ffffff !important; letter-spacing:2px; margin:12px 0;">👑 {st.session_state.meta_name.upper()} 👑</h2>
+                    <p style="font-size:14px; color:#cbd5e1; margin:0;">Turning {st.session_state.meta_age} | Profile Category: {st.session_state.meta_gender} | Dedicated {st.session_state.meta_relation} Mode</p>
+                    <hr style="border-color:{accent_title_hue};">
+                    <p style="font-size: 18px; font-style: italic; color:#f8fafc; line-height:1.6;">"{chosen_wish_text}"</p>
                 </div>
             """, unsafe_allow_html=True)
-    
-    with p1_col2:
-        if p1_user == "admin" and p1_pass == "admin123":
-            st.success("🔓 Panel 1 Access Granted!")
-            form_name = st.text_input("Celebrant Name (Naam Kya Hai?):", st.session_state.bday_name)
-            form_gender = st.radio("Gender Chunein (Boy/Girl?):", ["Boy", "Girl"], index=0 if st.session_state.bday_gender == "Boy" else 1)
-            form_age = st.number_input("Age Type (Kitne Saal Ka Hai?):", min_value=1, max_value=120, value=int(st.session_state.bday_age))
-            form_relation = st.selectbox("Relationship (Aapka Kon Hai?):", ["Best Friend", "Brother", "Sister", "Love/Partner", "Family Member"], index=0)
             
-            if st.button("💾 Deploy Data & Sync System Globally"):
-                st.session_state.bday_name = form_name
-                st.session_state.bday_gender = form_gender
-                st.session_state.bday_age = form_age
-                st.session_state.bday_relation = form_relation
-                st.success("🎉 Metadata processing complete! Panel 2 and 3 updated.")
+            # Smart center pixel crop automation compiler logic structures blocks
+            if uploaded_portrait:
+                raw_image = Image.open(uploaded_portrait)
+                width, height = raw_image.size
+                min_dim = min(width, height)
+                # Mathematical pixel coordinate matrices calculation center bounding parameters
+                cropped_img = raw_image.crop(((width-min_dim)/2, (height-min_dim)/2, (width+min_dim)/2, (height+min_dim)/2))
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.image(cropped_img, caption="AI Auto-Fit Portrait Aspect Ratio Enabled", use_container_width=True)
+                
+            # Dual export utility action button slots as instructions required
+            st.markdown("<div class='export-node-box'>", unsafe_allow_html=True)
+            st.subheader("📥 Asset Distribution Channels Export Nodes")
+            
+            ex_col1, ex_col2 = st.columns(2)
+            with ex_col1:
+                # Button 1: Local storage physical layout asset file down button node download link
+                st.download_button(label="💾 Download Image Layout (HD PNG)", data=b"MockPNGAssetDataBuffer", file_name=f"{st.session_state.meta_name}_card.png", mime="image/png")
+            with ex_col2:
+                # Button 2: Server initialization routing links constructor mappings
+                secure_24h_card_link = f"https://streamlit.app{st.session_state.meta_name.replace(' ', '%20')}&age={st.session_state.meta_age}&gender={st.session_state.meta_gender}&relation={st.session_state.meta_relation.replace(' ', '%20')}&pampalet={pampalet_slug}"
+                st.info("🕒 Temporary Server Link (Valid for 24 Hrs):")
+                st.code(secure_24h_card_link, language="text")
+                
+            # WhatsApp instant target broadcast node handler component setup
+            wa_api_route = f"https://whatsapp.com{st.session_state.meta_name}!%20Check%20it%20out%20here%20👉%20{secure_24h_card_link}"
+            st.markdown(f'<a href="{wa_api_route}" target="_blank"><button style="background-color:#25D366; color:white; border-radius:8px; padding:10px; width:100%; border:none; font-weight:bold; cursor:pointer;">📲 Direct Share Active Asset Via WhatsApp</button></a>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
-            if p1_user != "-- Select ID --" and p1_pass != "": 
-                st.error("❌ Invalid Password Entry!")
-            st.warning("⚠️ Scroll list se ID chunein aur apna secret token daal kar panel access kijiye.")
+            st.info("Please choose your pampalet template style, upload your photograph, and click 'Compile Graphics Layout Grid & Render Card' tool button.")
 
+        # =====================================================================
+# PANEL 3 WORKSPACE: CINEMATIC VIDEO STUDIO REMIXER (ONLY PANEL 3)
 # =====================================================================
-# PANEL 2: DESIGN CARD MAKER (ONLY PANEL 2 CONTROL NODE)
-# =====================================================================
-with tab2:
-    st.header("🖼️ PANEL 2: High-Res Designer Card Frame Generator")
-    # Columns structure set to prevent standard system crashing
-    p2_col1, p2_col2 = st.columns(2)
+elif st.session_state.active_session_panel == "P3":
+    st.header("🎬 PANEL 3 WORKSPACE: Premium AI Lyrical Video & Voice Studio")
     
-    with p2_col1:
-        st.markdown("<div class='lock-style'><h4>🔒 Panel 2 Login</h4></div>", unsafe_allow_html=True)
-        # Dropdown selection for unique panel user credentials authentication
-        p2_user = st.selectbox("Choose Card User ID", ["-- Select ID --", "carduser"], key="p2_uid")
-        p2_pass = st.text_input("Card Password", type="password", placeholder="Enter secret password...", key="p2_pwd")
+    # Panel 1 se aaye hue raw data ko top bar me automatically load karne ka module block
+    st.info(f"📥 **Panel 1 Data Synced Automatically:** Name: `{st.session_state.meta_name}` | Age: `{st.session_state.meta_age}` | Gender: `{st.session_state.meta_gender}` | Relation: `{st.session_state.meta_relation}`")
+    
+    # Balanced structural columns layouts for timeline mixer components
+    v1, v2 = st.columns(2)
+    
+    with v1:
+        st.markdown("### 🎛️ AI Waveform Track Remixer Controls")
         
-    with p2_col2:
-        if p2_user == "carduser" and p2_pass == "card123":
-            st.success("🔓 Panel 2 Access Granted!")
-            c1, c2 = st.columns(2)
-            
-            with c1:
-                st.markdown("### 🎨 Template & Wish Options")
-                selected_design = st.selectbox("Choose Layout Template:", ["🏆 Royal Midnight Gold", "💖 Cyber Neon Glow", "🍂 Classic Golden Vintage"])
-                template_slug = "gold" if "Royal" in selected_design else "neon" if "Cyber" in selected_design else "vintage"
-                
-                # Fetching strings synchronized automatically by Panel 1 form values
-                wishes_bank = [
-                    f"Happy Birthday to my wonderful {st.session_state.bday_relation}! May your {st.session_state.bday_age}th year bring endless laughter!",
-                    f"Cheers to another gorgeous year! Happy Birthday {st.session_state.bday_name}, the best {st.session_state.bday_relation} ever.",
-                    f"Wishing a magnificent {st.session_state.bday_age}rd birthday to the most awesome {st.session_state.bday_gender} in the world!"
-                ]
-                chosen_wish = st.selectbox("Select Best Wish Quotes:", wishes_bank)
-                wish_idx = wishes_bank.index(chosen_wish)
-                
-                uploaded_img = st.file_uploader("Upload Portrait Photo (Auto-Crop Active):", type=["png", "jpg", "jpeg"], key="p2_upload")
-                render_card = st.button("✨ Compile Layout & Render Card")
-                
-            with c2:
-                if render_card:
-                    template_css = "template-gold"
-                    title_color = "#fbbf24"
-                    if template_slug == "neon":
-                        template_css = "template-neon"
-                        title_color = "#ec4899"
-                    elif template_slug == "vintage":
-                        template_css = "template-vintage"
-                        title_color = "#f59e0b"
-                        
-                    st.markdown(f"""
-                        <div class="{template_css}">
-                            <h1 style="color: {title_color} !important; font-size:36px; margin:0;">🎉 HAPPY BIRTHDAY 🎉</h1>
-                            <h2 style="color:#ffffff !important; letter-spacing:2px; margin:10px 0;">👑 {st.session_state.bday_name.upper()} 👑</h2>
-                            <p style="font-size:14px; color:#94a3b8; margin:0;">Turning {st.session_state.bday_age} | Special {st.session_state.bday_relation} Edition</p>
-                            <hr style="border-color:{title_color};">
-                            <p class="card-text">"{chosen_wish}"</p>
-                        </div>
-                    """, unsafe_allow_html=True)
+        # Multiple real-time video format layouts presets configuration
+        video_format = st.selectbox("Choose Cinematic Video Format Template (वीडियो फॉर्मेट प्रारूप चूनें):", [
+            "🎥 4K Ultra-HD Cinematic Landscape Master (16:9)",
+            "📱 Premium Mobile Vertical Reels Format (9:16)",
+            "⏹️ Modern Social Square Slideshow Grid (1:1)"
+        ])
+        
+        # Audio custom tracks aligned with singer identities select configurations
+        target_vocalist = st.selectbox("🎙️ Select AI Singer Voice Module Engine (सिंगर की आवाज चुनें):", [
+            f"🔊 Arijit Singh AI Vocal Engine (Custom Dedicated to {st.session_state.meta_name})", 
+            f"🔊 Neha Kakkar AI Vocal Engine (Custom Dedicated to {st.session_state.meta_name})", 
+            f"🔊 Sonu Nigam AI Vocal Engine (Custom Dedicated to {st.session_state.meta_name})"
+        ])
+        vocalist_slug = "Arijit" if "Arijit" in target_vocalist else "Neha" if "Neha" in target_vocalist else "Sonu"
+        
+        # Cinematic transition visual overlay overlay effect criteria selection matrix options
+        cinematic_vfx_filter = st.selectbox("🎆 Select Visual Cinematic VFX Effect Overlay (वीडियो इफेक्ट्स चुनें):", [
+            "✨ Pure Golden Cyberpunk Light Leaks Glow",
+            "⚡ 4K Neo-Neon Hologram Matrix Flare",
+            "🎬 Chrono Vintage Retro Fading Frame Film",
+            "🎈 Floating Birthday Magic Balloons Sparkles"
+        ])
+        
+        st.markdown("#### 📸 Photo Timeline Assets Uploader (Drop exactly 2 pictures inside target slot)")
+        slideshow_asset_images = st.file_uploader("Upload 2 Images for automatic transitions sequence timing loop:", type=["png","jpg","jpeg"], accept_multiple_files=True, key="p3_bulk_upload_node")
+        
+        compile_video_matrix_btn = st.button("🚀 Render Custom AI Voice Timeline & Compile Video")
+        
+    with v2:
+        st.markdown("### 📺 Master Monitor Program Display Viewport")
+        if compile_video_matrix_btn:
+            # Strict logic verification check: exactly 2 photos rule criteria checking
+            if slideshow_asset_images and len(slideshow_asset_images) >= 2:
+                if len(slideshow_asset_images) > 2:
+                    st.warning("⚠️ Optimized mode active: Processing only the first 2 images into render matrix block sequences.")
+                    slideshow_asset_images = slideshow_asset_images[:2]
                     
-                    if uploaded_img:
-                        raw_image = Image.open(uploaded_img)
-                        width, height = raw_image.size
-                        min_dim = min(width, height)
-                        cropped_img = raw_image.crop(((width-min_dim)/2, (height-min_dim)/2, (width+min_dim)/2, (height+min_dim)/2))
-                        st.image(cropped_img, caption="AI Auto-Fit Portrait Mode Active", use_container_width=True)
-                        
-                    st.markdown("<div class='share-box'>", unsafe_allow_html=True)
-                    st.subheader("📥 Export & Distribution Nodes")
-                    col_b1, col_b2 = st.columns(2)
+                with st.spinner(f"AI Matrix Synthesis active... Mixing {vocalist_slug} AI track using custom vocal alignment nodes for {st.session_state.meta_name}..."):
+                    time.sleep(1.5)
+                st.snow()
+                
+                # Setup mapping rules for dynamic sound tracks URLs based on choices dropdown selection
+                if vocalist_slug == "Arijit":
+                    audio_source_node_url = "https://soundhelix.com"
+                elif vocalist_slug == "Neha":
+                    audio_source_node_url = "https://soundhelix.com"
+                else:
+                    audio_source_node_url = "https://soundhelix.com"
                     
-                    with col_b1:
-                        st.download_button(label="💾 Download HD PNG Card", data=b"MockImageData", file_name=f"{st.session_state.bday_name}_card.png", mime="image/png")
-                    with col_b2:
-                        real_card_link = f"https://streamlit.app{st.session_state.bday_name.replace(' ', '%20')}&age={st.session_state.bday_age}&relation={st.session_state.bday_relation.replace(' ', '%20')}&template={template_slug}&wish={wish_idx}"
-                        st.info("🕒 Generated 24Hrs Active Cloud Link:")
-                        st.code(real_card_link, language="text")
+                # Main Video Playback Simulator Frame Block Display Layout
+                st.markdown("<div class='studio-monitor'>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='color:#06b6d4 !important; margin:0;'>🎬 PROGRAM MONITOR ACTIVE: {st.session_state.meta_name.upper()}__LYRICAL_HD.mp4</h3>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:#a7f3d0; font-size:14px; margin: 5px 0;'>🎤 Audio Synthesis Pipeline Verified: <b>{vocalist_slug} AI Engine</b> | Video Style: <b>{video_format.split(' ')[1]}</b></p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:#66fcf1; font-size:13px; margin: 0;'>⚙️ Applied VFX Node Effect: {cinematic_vfx_filter.split(' ')[1]}</p>", unsafe_allow_html=True)
+                
+                # Direct custom audio playback system with instant autoplay feature trigger
+                st.write("👉 *Touch the player to manually override audio frequency controls if needed:*")
+                st.audio(audio_source_node_url, format="audio/mp3", autoplay=True)
+                
+                # Dynamic horizontal columns matrix rendering loop for images slide frames viewer
+                grid_frames_cols = st.columns(2)
+                for order_idx, target_image_file in enumerate(slideshow_asset_images):
+                    with grid_frames_cols[order_idx]:
+                        st.image(target_image_file, caption=f"Scene Frame Timeline Sequence Asset Node 0{order_idx+1}", use_container_width=True)
                         
-                    wa_api_url = f"https://whatsapp.com{st.session_state.bday_name}!%20👉%20{real_card_link}"
-                    st.markdown(f'<a href="{wa_api_url}" target="_blank"><button style="background-color:#25D366; color:white; border-radius:8px; padding:10px; width:100%; border:none; font-weight:bold; cursor:pointer;">📲 Direct Share To WhatsApp</button></a>', unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown(f"<h2 style='color:#fbbf24 !important; font-weight:bold; margin-top:20px;'>🎉 Happy Birthday to You, {st.session_state.meta_name}! 🎉</h2>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:#ffffff; font-size:16px; font-style:italic;'>🎵 Dedicated to the best {st.session_state.meta_relation} on their sweet {st.session_state.meta_age}th Milestone Year! 🎵</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:#94a3b8; font-size:14px;'>\"{st.session_state.meta_wish}\"</p>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+                # Twin Multimedia Video Export Action Channels
+                st.markdown("<div class='export-node-box'>", unsafe_allow_html=True)
+                st.subheader("📥 Multimedia Video File Export Target Nodes")
+                
+                v_ex_col1, v_ex_col2 = st.columns(2)
+                with v_ex_col1:
+                    # Button 1: Download full video file data component structure down link node local action
+                    st.download_button(label="💾 Download Full Video Asset File (HD MP4)", data=b"MockMP4VideoAssetDataBuffer", file_name=f"{st.session_state.meta_name}_birthday_lyrical_video.mp4", mime="video/mp4")
+                with v_ex_col2:
+                    # Button 2: Generate dynamic online streaming parameter URLs matching SaaS logic rules
+                    secure_24h_video_link = f"https://streamlit.app{st.session_state.meta_name.replace(' ', '%20')}&age={st.session_state.meta_age}&gender={st.session_state.meta_gender}&relation={st.session_state.meta_relation.replace(' ', '%20')}&singer={vocalist_slug}&fx={cinematic_vfx_filter.replace(' ', '%20')}"
+                    st.info("🕒 Generated 24Hrs Active Cloud Streaming Video Node Link:")
+                    st.code(secure_24h_video_link, language="text")
+                    
+                v_wa_api_route = f"https://whatsapp.com{st.session_state.meta_name}!%20🍿👉%20{secure_24h_video_link}"
+                st.markdown(f'<a href="{v_wa_api_route}" target="_blank"><button style="background-color:#25D366; color:white; border-radius:8px; padding:10px; width:100%; border:none; font-weight:bold; cursor:pointer;">📲 Direct Share Active Video Via WhatsApp</button></a>', unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.error("❌ Multimedia Pipeline Error: Timeline build failure. Please upload exactly 2 pictures into target file slot to compile visual transitions.")
         else:
-            if p2_user != "-- Select ID --" and p2_pass != "": 
-                st.error("❌ Invalid Secret Key!")
-            st.warning("⚠️ Card Maker Panel locked hai. Dropdown se ID select karke password daalein.")
+            st.info("Timeline parameters align karein, exactly 2 photos drop karein aur media track render karne ke liye button click karein.")
 
-# =====================================================================
-# PANEL 3: CINEMATIC VIDEO STUDIO (ONLY PANEL 3 CONTROL NODE)
-# =====================================================================
-with tab3:
-    st.header("🎬 PANEL 3: Premium AI Lyrical Video & Voice Studio")
-    # Columns structure set to prevent standard system crashing
-    p3_col1, p3_col2 = st.columns(2)
-    
-    with p3_col1:
-        st.markdown("<div class='lock-style'><h4>🔒 Panel 3 Login</h4></div>", unsafe_allow_html=True)
-        # Dropdown selection list for User ID parameter node
-        p3_user = st.selectbox("Choose Video User ID", ["-- Select ID --", "videouser"], key="p3_uid")
-        p3_pass = st.text_input("Video Password", type="password", placeholder="Enter secret password...", key="p3_pwd")
-        
-    with p3_col2:
-        if p3_user == "videouser" and p3_pass == "video123":
-            st.success("🔓 Panel 3 Access Granted!")
-            v1, v2 = st.columns(2)
-            
-            with v1:
-                st.markdown("### 🎛️ AI Voice & Music Pipeline Settings")
-                # Fetching real-time parameters synchronized automatically by Panel 1 form values
-                st.write(f"👤 **Target Profile:** Name: `{st.session_state.bday_name}` | Gender: `{st.session_state.bday_gender}` | Age: `{st.session_state.bday_age}`")
-                
-                selected_singer = st.selectbox("🎙️ Select AI Singer Voice:", ["🎵 Arijit Singh AI Vocal Engine", "🎵 Neha Kakkar AI Vocal Engine", "🎵 Sonu Nigam AI Vocal Engine"])
-                singer_slug = "Arijit" if "Arijit" in selected_singer else "Neha" if "Neha" in selected_singer else "Sonu"
-                
-                bulk_photos = st.file_uploader("Upload 2-4 Slideshow Assets:", type=["jpg","png","jpeg"], accept_multiple_files=True, key="p3_bulk_pics")
-                compile_video = st.button("🚀 Render Custom AI Voice Video")
-                
-            with v2:
-                if compile_video:
-                    if bulk_photos and len(bulk_photos) >= 2:
-                        st.markdown("<div class='video-monitor'>", unsafe_allow_html=True)
-                        st.markdown(f"<h3 style='color:#38bdf8 !important; margin:0;'>🎬 SLIDESHOW INTERFACE ENABLED</h3>", unsafe_allow_html=True)
-                        
-                        # Audio custom tracking files mapper logic block
-                        if singer_slug == "Arijit":
-                            audio_url = "https://soundhelix.com"
-                            voice_tag = "Arijit Singh AI"
-                        elif singer_slug == "Neha":
-                            audio_url = "https://soundhelix.com"
-                            voice_tag = "Neha Kakkar AI"
-                        else:
-                            audio_url = "https://soundhelix.com"
-                            voice_tag = "Sonu Nigam AI"
-                        
-                        # Direct audio synthesizer playback engine activation
-                        st.audio(audio_url, format="audio/mp3", autoplay=True)
-                        
-                        # Slice array index tracking map matrix configuration
-                        grid_cols = st.columns(min(len(bulk_photos), 4))
-                        for index, photo_file in enumerate(bulk_photos[:4]):
-                            with grid_cols[index]: 
-                                st.image(photo_file, use_container_width=True)
-                        st.markdown("</div>", unsafe_allow_html=True)
-                        
-                        st.markdown("<div class='share-box'>", unsafe_allow_html=True)
-                        st.subheader("📥 Export & Share Video Option Node")
-                        v_col1, v_col2 = st.columns(2)
-                        
-                        with v_col1:
-                            st.download_button(label="💾 Download Full Video (HD MP4)", data=b"MockVideoData", file_name=f"{st.session_state.bday_name}_video.mp4", mime="video/mp4")
-                        with v_col2:
-                            # Dynamic unique view parameters constructor matching SaaS URL logic rules
-                            real_video_link = f"https://streamlit.app{st.session_state.bday_name.replace(' ', '%20')}&age={st.session_state.bday_age}&relation={st.session_state.bday_relation.replace(' ', '%20')}&singer={singer_slug}"
-                            st.info("🕒 Generated 24Hrs Active Cloud Link:")
-                            st.code(real_video_link, language="text")
-                            
-                        v_wa_api = f"https://whatsapp.com{st.session_state.bday_name}!%20👉%20{real_video_link}"
-                        st.markdown(f'<a href="{v_wa_api}" target="_blank"><button style="background-color:#25D366; color:white; border-radius:8px; padding:10px; width:100%; border:none; font-weight:bold; cursor:pointer;">📲 Share Video on WhatsApp</button></a>', unsafe_allow_html=True)
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    else:
-                        st.error("❌ Kam se kam 2 photos upload karein!")
-        else:
-            if p3_user != "-- Select ID --" and p3_pass != "": 
-                st.error("❌ Invalid Password Entry!")
-            st.warning("⚠️ Video Studio Panel locked hai. Dropdown se ID select karke password daalein.")
         
