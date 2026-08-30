@@ -3,9 +3,9 @@ import time
 from PIL import Image
 
 # =====================================================================
-# 1. APPLICATION STRUCTURAL CONFIGURATION & ADVANCED UI THEMING
+# 1. PAGE SETUP & PREMIUM CSS THEME
 # =====================================================================
-st.set_page_config(page_title="AI Birthday Ecosystem Pro", page_icon="🎬", layout="wide")
+st.set_page_config(page_title="AI Dynamic Birthday Studio", page_icon="🎂", layout="wide")
 
 st.markdown("""
     <style>
@@ -26,8 +26,7 @@ st.markdown("""
     .export-node-box { background-color: #090d16; padding: 20px; border-radius: 16px; border: 1px dashed #45f3ff; margin-top: 20px; text-align: center; }
     
     /* Direct Functional Actions Core Component Styling */
-    .stButton>button { background: linear-gradient(90px, #3b82f6 0%, #2563eb 100%); color: white; font-weight: bold; border-radius: 10px; padding: 10px; width: 100%; border: none; transition: 0.3s; }
-    .stButton>button:hover { background: linear-gradient(90px, #2563eb 0%, #1d4ed8 100%); box-shadow: 0 5px 15px rgba(37,99,235,0.4); }
+    .stButton>button { background: linear-gradient(90px, #3b82f6 0%, #2563eb 100%); color: white; font-weight: bold; border-radius: 10px; padding: 12px; width: 100%; border: none; font-size:16px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -36,18 +35,15 @@ st.markdown("""
 # =====================================================================
 if "active_session_panel" not in st.session_state:
     st.session_state.active_session_panel = None
+if "login_form_visible" not in st.session_state:
+    st.session_state.login_form_visible = False
 
 # Default Values derived from Panel 1 Administrative Core
-if "meta_name" not in st.session_state:
-    st.session_state.meta_name = "Sunita"
-if "meta_age" not in st.session_state:
-    st.session_state.meta_age = 22
-if "meta_gender" not in st.session_state:
-    st.session_state.meta_gender = "Girl"
-if "meta_wish" not in st.session_state:
-    st.session_state.meta_wish = "May your special day be packed with timeless beautiful memories!"
-if "meta_relation" not in st.session_state:
-    st.session_state.meta_relation = "Best Friend"
+if "meta_name" not in st.session_state: st.session_state.meta_name = "Sunita"
+if "meta_age" not in st.session_state: st.session_state.meta_age = 22
+if "meta_gender" not in st.session_state: st.session_state.meta_gender = "Girl"
+if "meta_wish" not in st.session_state: st.session_state.meta_wish = "May your special day be packed with timeless beautiful memories!"
+if "meta_relation" not in st.session_state: st.session_state.meta_relation = "Best Friend"
 
 # Custom Security Keys Database Configurations
 if "pass_p1" not in st.session_state: st.session_state.pass_p1 = "admin123"
@@ -92,38 +88,34 @@ if "view" in url_parameters:
     elif target_view == "video":
         r_singer = url_parameters.get("singer", "Arijit")
         r_fx = url_parameters.get("fx", "Neon")
-        
         audio_stream = "https://soundhelix.com" if r_singer == "Arijit" else "https://soundhelix.com"
         
         st.markdown("<div class='studio-monitor'>", unsafe_allow_html=True)
         st.markdown(f"<h1 style='color:#06b6d4 !important; margin:0;'>🍿 LIVE STREAM TIMELINE GENERATED FOR {r_name.upper()}</h1>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:#a7f3d0; font-size:16px; margin: 10px 0;'>🎤 Selected Vocalist Track Artist: <b>{r_singer} AI</b> | Cinematic VFX Node: <b>{r_fx}</b></p>", unsafe_allow_html=True)
-        
         st.audio(audio_stream, format="audio/mp3", autoplay=True)
-        
         st.markdown(f"<h2 style='color:#fbbf24 !important; font-weight:bold; margin-top:30px;'>🎉 Happy Birthday to you, {r_name}! 🎉</h2>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:#94a3b8; font-size:16px;'>This dedicated audio timeline presentation file is actively mounted securely on server storage nodes.</p>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
-    st.info("🕒 This content asset cloud node is temporary initialized active on servers for a 24-Hour window.")
     st.stop()
 
 # =====================================================================
-# 4. INITIAL EMPTY CLEAN LANDING PAGE LAYOUT INTERFACE 
+# 4. INITIAL EMPTY CLEAN LANDING PAGE LAYOUT INTERFACE
 # =====================================================================
 if st.session_state.active_session_panel is None:
-    st.title("⚡ Ultra-Secure AI Lyrical Birthday Studio Engine")
+    st.title("⚡ AI Lyrical Birthday Studio Engine Pro")
     st.markdown("<p style='text-align:center; color:#64748b;'>Database Server Matrix Portal Gateway Client Workspace Node</p>", unsafe_allow_html=True)
-    st.markdown("---")
+    st.markdown("<br><br>", unsafe_allow_html=True)
     
-    # Hide/Unhide Primary Toggle Action Button for Terminal Box Initialization Layout
-    show_login_matrix = st.checkbox("🔑 Open Secure Multi-User Login Terminal Form", value=False)
-    
-    if show_login_matrix:
+    # CLICKABLE TOUCH BUTTON IMPLEMENTED INSTEAD OF CHECKBOX
+    login_btn_label = "🔒 Close Secure Login Terminal" if st.session_state.login_form_visible else "🔓 Open Secure Multi-User Login Terminal"
+    if st.button(login_btn_label):
+        st.session_state.login_form_visible = not st.session_state.login_form_visible
+        st.rerun()
+        
+    if st.session_state.login_form_visible:
         st.markdown("<div class='landing-gate'>", unsafe_allow_html=True)
         st.markdown("<h3>🔒 USER IDENTITY VERIFICATION GATEWAY</h3>", unsafe_allow_html=True)
         
-        # User Selection Dropdown Scroll List matching custom requirements instructions
         user_identity_selection = st.selectbox("Choose Target Panel Clearance ID:", ["-- Scroll List: Select Workspace --", "PANEL 1: Admin Metadata Controller", "PANEL 2: High-Res Designer Card Frame", "PANEL 3: Cinematic Video Studio Remixer"])
         user_password_input = st.text_input("Enter Crypto Key Token (Password):", type="password", placeholder="••••••••")
         
@@ -138,18 +130,15 @@ if st.session_state.active_session_panel is None:
                 st.session_state.active_session_panel = "P3"
                 st.rerun()
             else:
-                st.error("❌ Identification mismatch! Access token verified failed or credentials validation corrupted.")
+                st.error("❌ Identification mismatch! Credentials validation failed.")
         st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
-# =====================================================================
-# 5. CORE WORKSPACE ENVIRONMENT ROOMS (AFTER SUCCESSFUL UNLOCK AUTH)
-# =====================================================================
+# Exit Workspace Action Button
 if st.button("🔙 Terminate Workspace Session & Return to Empty Landing Page"):
     st.session_state.active_session_panel = None
+    st.session_state.login_form_visible = False
     st.rerun()
-
-st.markdown("---")
 
 # =====================================================================
 # PANEL 1 WORKSPACE: MASTER METADATA REGISTRATION FORM (ONLY PANEL 1)
@@ -157,7 +146,7 @@ st.markdown("---")
 if st.session_state.active_session_panel == "P1":
     st.header("⚙️ PANEL 1 WORKSPACE: Master Metadata Registration Form")
     
-    # Structural columns to balance the form and password updater layout
+    # Balanced structural columns layouts for form and password configurations
     col_p1_a, col_p1_b = st.columns(2)
     
     with col_p1_a:
@@ -167,7 +156,7 @@ if st.session_state.active_session_panel == "P1":
         f_name = st.text_input("Celebrant Target Name (Naam Kya Hai?):", st.session_state.meta_name)
         f_age = st.number_input("Celebrant Milestone Age (Kitne Saal Ka Hai?):", min_value=1, max_value=120, value=int(st.session_state.meta_age))
         
-        # Gender Selection with Male, Female, and Transgender criteria options
+        # Gender Selection Criteria with Male, Female, and Transgender criteria options
         f_gender = st.radio("Gender Profile Matrix Chunein (Male/Female/Transgender):", ["Male", "Female", "Transgender"], index=0 if st.session_state.meta_gender == "Male" else 1 if st.session_state.meta_gender == "Female" else 2)
         
         f_wish = st.text_area("Custom Best Wish Quote Input (Agar aap likhna chahein toh):", st.session_state.meta_wish)
@@ -290,12 +279,12 @@ elif st.session_state.active_session_panel == "P2":
                 
             # WhatsApp instant target broadcast node handler component setup
             wa_api_route = f"https://whatsapp.com{st.session_state.meta_name}!%20Check%20it%20out%20here%20👉%20{secure_24h_card_link}"
-            st.markdown(f'<a href="{wa_api_route}" target="_blank"><button style="background-color:#25D366; color:white; border-radius:8px; padding:10px; width:100%; border:none; font-weight:bold; cursor:pointer;">📲 Direct Share Active Asset Via WhatsApp</button></a>', unsafe_allow_html=True)
+            st.markdown(f'<a href="{wa_api_route}" target="_blank"><button style="background-color:#25D366; color:white; border-radius:8px; padding:10px; width:100%; border:none; font-weight:bold; cursor:pointer;">📲 Direct Share To WhatsApp</button></a>', unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.info("Please choose your pampalet template style, upload your photograph, and click 'Compile Graphics Layout Grid & Render Card' tool button.")
 
-        # =====================================================================
+# =====================================================================
 # PANEL 3 WORKSPACE: CINEMATIC VIDEO STUDIO REMIXER (ONLY PANEL 3)
 # =====================================================================
 elif st.session_state.active_session_panel == "P3":
@@ -362,8 +351,7 @@ elif st.session_state.active_session_panel == "P3":
                 # Main Video Playback Simulator Frame Block Display Layout
                 st.markdown("<div class='studio-monitor'>", unsafe_allow_html=True)
                 st.markdown(f"<h3 style='color:#06b6d4 !important; margin:0;'>🎬 PROGRAM MONITOR ACTIVE: {st.session_state.meta_name.upper()}__LYRICAL_HD.mp4</h3>", unsafe_allow_html=True)
-                st.markdown(f"<p style='color:#a7f3d0; font-size:14px; margin: 5px 0;'>🎤 Audio Synthesis Pipeline Verified: <b>{vocalist_slug} AI Engine</b> | Video Style: <b>{video_format.split(' ')[1]}</b></p>", unsafe_allow_html=True)
-                st.markdown(f"<p style='color:#66fcf1; font-size:13px; margin: 0;'>⚙️ Applied VFX Node Effect: {cinematic_vfx_filter.split(' ')[1]}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:#a7f3d0; font-size:14px; margin: 5px 0;'>🎤 Audio Synthesis Pipeline Verified: <b>{vocalist_slug} AI Engine</b></p>", unsafe_allow_html=True)
                 
                 # Direct custom audio playback system with instant autoplay feature trigger
                 st.write("👉 *Touch the player to manually override audio frequency controls if needed:*")
