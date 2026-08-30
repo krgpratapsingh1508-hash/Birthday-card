@@ -1,131 +1,146 @@
 import streamlit as st
 
-# 1. Page Configuration & Setup
-st.set_page_config(page_title="Ultimate Birthday Hub", page_icon="🎬", layout="wide")
+# 1. Page Config and Setup
+st.set_page_config(page_title="Birthday Studio", page_icon="🎂", layout="wide")
 
-# Persistent State Setup (Admin Editing Ke Liye)
-if "bday_name" not in st.session_state:
-    st.session_state.bday_name = "Best Friend"
-if "custom_msg" not in st.session_state:
-    st.session_state.custom_msg = "May your year be full of happiness and zero buffering!"
-if "video_url" not in st.session_state:
-    st.session_state.video_url = "https://youtube.com"
-
-# Dark Mode Cinema Styling (CSS)
+# Theme Styling (Clean Dark UI)
 st.markdown("""
     <style>
-    body { background-color: #121212; color: #ffffff; }
-    .stApp { background-color: #121212; }
-    h1 { color: #FF4B4B; font-family: 'Helvetica', sans-serif; font-weight: bold; }
-    .card-box { background-color: #1E1E1E; padding: 25px; border-radius: 15px; border: 2px solid #FF4B4B; text-align: center; box-shadow: 0 4px 15px rgba(255, 75, 75, 0.2); }
+    .main { background-color: #121212; color: #ffffff; }
+    h1, h2, h3 { color: #FF4B4B !important; font-family: 'Arial', sans-serif; }
+    .card-frame {
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        box-shadow: 0px 10px 25px rgba(255, 75, 75, 0.3);
+        margin-top: 15px;
+    }
+    .video-info-box {
+        background-color: #1E1E1E;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #333;
+        margin-top: 15px;
+    }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# 2. LOGIN SYSTEM (Sidebar)
-st.sidebar.title("🔐 Access Control")
-user_role = st.sidebar.selectbox("Select Panel / Role", ["👤 Guest / User View", "🛠️ Admin Panel"])
+# Application Data Initialize (Session State)
+if "name" not in st.session_state:
+    st.session_state.name = "Best Friend"
+if "msg" not in st.session_state:
+    st.session_state.msg = "Wishing you a fantastic year ahead full of success and joy!"
+if "url" not in st.session_state:
+    st.session_state.url = "https://youtube.com"
 
-# Password Check for Admin
+st.title("🎬 3-Panel Birthday Creator App")
+st.markdown("---")
+
+# 2. Sidebar Login Panel
+st.sidebar.title("🔐 Authorization")
+role = st.sidebar.selectbox("Chunein kaunsa panel dekhna hai:", ["👤 Guest / User View", "🛠️ Admin Control Panel"])
+
 is_admin = False
-if user_role == "🛠️ Admin Panel":
-    admin_user = st.sidebar.text_input("Username", value="", placeholder="Enter Admin ID")
-    admin_pass = st.sidebar.text_input("Password", type="password", placeholder="Enter Password")
+if role == "🛠️ Admin Control Panel":
+    st.sidebar.subheader("Admin Login Details")
+    admin_id = st.sidebar.text_input("Admin ID", value="", placeholder="e.g. admin")
+    admin_pw = st.sidebar.text_input("Password", type="password", placeholder="e.g. birthday123")
     
-    # ID & Password Settings
-    if admin_user == "admin" and admin_pass == "birthday123":
-        st.sidebar.success("✅ Admin Access Granted!")
+    if admin_id == "admin" and admin_pw == "birthday123":
+        st.sidebar.success("✅ Admin Access Approved!")
         is_admin = True
-    elif admin_user != "" or admin_pass != "":
-        st.sidebar.error("❌ Wrong ID or Password!")
+    elif admin_id != "" or admin_pw != "":
+        st.sidebar.error("❌ Galat ID ya Password!")
 
 st.sidebar.markdown("---")
+st.sidebar.info("💡 Default Login:\nID: admin\nPassword: birthday123")
 
-# 3. PANELS NAVIGATION (Sirf tabhi jab Admin logged in ho ya Guest view ho)
-st.title("🎬 Multi-Panel Birthday Creator Engine")
-
-# Tabs for 3 Panels
-tab1, tab2, tab3 = st.tabs(["⚙️ PANEL 1: Admin Control", "🖼️ PANEL 2: Image Card Maker", "📺 PANEL 3: Video Editor Card"])
+# 3. Core Panels (3 Tabs System)
+p1, p2, p3 = st.tabs(["⚙️ PANEL 1: Admin Configuration", "🖼️ PANEL 2: Image Card Maker", "📺 PANEL 3: Video Card Player"])
 
 # =====================================================================
-# PANEL 1: ADMIN CONTROL
+# PANEL 1: ADMIN CONFIGURATION
 # =====================================================================
-with tab1:
-    st.header("⚙️ Admin Dashboard")
+with p1:
+    st.subheader("⚙️ System Control Dashboard")
     if is_admin:
-        st.subheader("Edit Content for Panel 2 & Panel 3")
+        st.write("Yahan se aap Panel 2 aur Panel 3 ka data live change kar sakte hain:")
         
-        # Admin inputs to modify state
-        new_name = st.text_input("Change Birthday Person Name", st.session_state.bday_name)
-        new_msg = st.text_area("Change Birthday Message / Wish", st.session_state.custom_msg)
-        new_video = st.text_input("Change Video URL (YouTube)", st.session_state.video_url)
+        # Admin Forms for Updates
+        adm_name = st.text_input("Birthday Name Badlein:", st.session_state.name)
+        adm_msg = st.text_area("Birthday Message Badlein:", st.session_state.msg)
+        adm_url = st.text_input("Video URL (YouTube Link) Badlein:", st.session_state.url)
         
-        if st.button("💾 Save & Update Changes Across App"):
-            st.session_state.bday_name = new_name
-            st.session_state.custom_msg = new_msg
-            st.session_state.video_url = new_video
-            st.success("🎉 Changes applied successfully! Go check Panel 2 and Panel 3.")
+        if st.button("💾 Save Settings & Deploy Changes"):
+            st.session_state.name = adm_name
+            st.session_state.msg = adm_msg
+            st.session_state.url = adm_url
+            st.success("🎉 Data successfully update ho gaya! Ab Panel 2 ya Panel 3 check karein.")
     else:
-        st.warning("⚠️ Access Denied! Please enter correct Admin ID & Password in the sidebar to unlock editing.")
+        st.warning("⚠️ Yeh panel locked hai. Pehle sidebar me sahi Admin ID aur Password dalein.")
 
 # =====================================================================
 # PANEL 2: IMAGE CARD MAKER
 # =====================================================================
-with tab2:
-    st.header("🖼️ Birthday Image Card Generator")
+with p2:
+    st.subheader("🖼️ Interactive Birthday Image Card")
     
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.markdown("### 🛠️ Card Customizer")
-        card_bg = st.color_picker("Choose Card Background Color", "#FFD1DC")
-        text_color = st.color_picker("Choose Text Color", "#D2143A")
-        uploaded_img = st.file_uploader("Upload Birthday Person's Photo", type=["jpg", "png", "jpeg"])
-        generate_card = st.button("🎨 Render Photo Card")
-
+        st.markdown("### 🎨 Design Setup")
+        bg_col = st.color_picker("Card Background Color Chunein:", "#FFF0F5")
+        txt_col = st.color_picker("Text Color Chunein:", "#C71585")
+        user_photo = st.file_uploader("Birthday Person ki Photo Upload karein:", type=["png", "jpg", "jpeg"])
+        render_image_card = st.button("✨ Render Custom Card")
+        
     with col2:
-        st.markdown("### 🖼️ Live Card Preview")
-        if generate_card:
+        st.markdown("### 👀 Output Card Preview")
+        if render_image_card:
             st.balloons()
-            # Custom styled HTML Card
+            
+            # HTML Layout block for the card
             st.markdown(f"""
-                <div style="background-color: {card_bg}; padding: 30px; border-radius: 20px; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.15);">
-                    <h1 style="color: {text_color}; font-size: 40px; margin-bottom: 5px;">🎉 Happy Birthday! 🎉</h1>
-                    <h2 style="color: #333333;">✨ {st.session_state.bday_name} ✨</h2>
-                    <p style="color: #555555; font-size: 18px; font-style: italic; padding: 10px;">"{st.session_state.custom_msg}"</p>
+                <div style="background-color: {bg_col}; padding: 25px; border-radius: 15px; text-align: center; border: 2px dashed {txt_col};">
+                    <h1 style="color: {txt_col} !important; font-size: 32px; margin-bottom: 5px;">🎉 Happy Birthday! 🎉</h1>
+                    <h2 style="color: #333333 !important; font-weight: bold;">✨ {st.session_state.name} ✨</h2>
+                    <p style="color: #555555; font-size: 16px; font-style: italic;">"{st.session_state.msg}"</p>
                 </div>
             """, unsafe_allow_html=True)
             
-            if uploaded_img:
-                st.image(uploaded_img, caption=f"Birthday Star: {st.session_state.bday_name}", use_container_width=True)
+            # Display uploaded photo inside the preview area smoothly
+            if user_photo is not None:
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.image(user_photo, caption=f"Celebrant: {st.session_state.name}", use_container_width=True)
         else:
-            st.info("Click 'Render Photo Card' to view the generated image card.")
+            st.info("Balloons animation aur design dekhne ke liye '✨ Render Custom Card' button par click karein.")
 
 # =====================================================================
-# PANEL 3: VIDEO CARD EDITOR
+# PANEL 3: VIDEO CARD PLAYER
 # =====================================================================
-with tab3:
-    st.header("📺 Professional Video Card Panel")
+with p3:
+    st.subheader("📺 Video Player Control Room")
     
-    col_v1, col_v2 = st.columns([1, 2])
+    v_col1, v_col2 = st.columns([1, 1])
     
-    with col_v1:
-        st.markdown("### 🎬 Video FX controls")
-        video_speed = st.slider("Playback Speed Preview", 0.5, 2.0, 1.0, 0.1)
-        video_theme = st.selectbox("Video Filter Effect", ["Original Cinema", "Vibrant Pop", "Vintage Retro"])
-        render_vid = st.button("🚀 Render & Play Video")
+    with v_col1:
+        st.markdown("### 🎬 Media Options")
+        fx_effect = st.selectbox("Video FX Filter Applied:", ["Cinematic Master", "Vintage 90s Tone", "Vibrant Digital Pop"])
+        render_video_card = st.button("🚀 Render & Play Media")
         
-    with col_v2:
-        st.markdown("### 📺 Player Viewport")
-        # Video link updated by Admin
-        st.video(st.session_state.video_url)
+    with v_col2:
+        st.markdown("### 🍿 Monitor Display")
+        # Displaying the synchronized video
+        st.video(st.session_state.url)
         
-        if render_vid:
+        if render_video_card:
             st.snow()
             st.markdown(f"""
-                <div class="card-box">
-                    <h2 style="color: #FF4B4B; margin: 0;">🎬 Now Playing: For {st.session_state.bday_name}</h2>
-                    <p style="margin: 5px 0 0 0; color: #bbb;">Filter: {video_theme} | Speed: {video_speed}x</p>
-                    <p style="font-size: 18px; color: #fff; margin-top: 15px;">🌟 "{st.session_state.custom_msg}" 🌟</p>
+                <div class="video-info-box">
+                    <h3 style="margin:0;">🎬 Video Playing for: {st.session_state.name}</h3>
+                    <p style="color: #888; font-size: 14px; margin: 5px 0;">Filter Mode: <b>{fx_effect}</b></p>
+                    <p style="font-size: 16px; color: #FF4B4B; font-style: italic; margin-top: 10px;">"{st.session_state.msg}"</p>
                 </div>
             """, unsafe_allow_html=True)
             
