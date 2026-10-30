@@ -1,422 +1,416 @@
-import streamlit as st
-import time
-from PIL import Image
+"""
+🎂 Birthday Card Studio
+Photo + naam + wish daalo -> real PNG birthday card banao, download karo, WhatsApp pe bhejo.
+"""
+import io
+import math
+import random
+import re
+import urllib.parse
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 # =====================================================================
-# 1. PAGE SETUP & PREMIUM CSS THEME
+# 1. THEMES
 # =====================================================================
-st.set_page_config(page_title="AI Dynamic Birthday Studio", page_icon="🎂", layout="wide")
+THEMES = {
+    "👑 Royal Purple": dict(
+        bg=("#2b0a5e", "#7c3aed"), title="#fde68a", text="#f5f3ff", accent="#fbbf24",
+        ring="#ffffff", glow="#c4b5fd", badge_text="#3b0764",
+        balloons=["#f472b6", "#fbbf24", "#60a5fa", "#34d399", "#fb7185", "#a78bfa"],
+        confetti=["#fbbf24", "#f472b6", "#60a5fa", "#ffffff", "#34d399"],
+    ),
+    "🌸 Rose Pink": dict(
+        bg=("#fff1f2", "#fda4af"), title="#be123c", text="#881337", accent="#e11d48",
+        ring="#ffffff", glow="#ffffff", badge_text="#ffffff",
+        balloons=["#e11d48", "#f97316", "#a855f7", "#ec4899", "#f43f5e", "#fb923c"],
+        confetti=["#e11d48", "#f59e0b", "#a855f7", "#ffffff", "#ec4899"],
+    ),
+    "✨ Midnight Gold": dict(
+        bg=("#050816", "#1e2a5a"), title="#fcd34d", text="#e2e8f0", accent="#f5c542",
+        ring="#fde68a", glow="#f5c542", badge_text="#0b1020",
+        balloons=["#f5c542", "#38bdf8", "#f472b6", "#fbbf24", "#818cf8", "#34d399"],
+        confetti=["#f5c542", "#ffffff", "#38bdf8", "#f472b6", "#818cf8"],
+    ),
+    "🌿 Mint Fresh": dict(
+        bg=("#ecfeff", "#6ee7b7"), title="#047857", text="#064e3b", accent="#059669",
+        ring="#ffffff", glow="#ffffff", badge_text="#ffffff",
+        balloons=["#f97316", "#facc15", "#3b82f6", "#ec4899", "#10b981", "#8b5cf6"],
+        confetti=["#f97316", "#facc15", "#3b82f6", "#ec4899", "#ffffff"],
+    ),
+}
 
-st.markdown("""
-    <style>
-    .main { background-color: #060709; color: #e2e8f0; font-family: 'Inter', sans-serif; }
-    h1, h2, h3, h4 { font-family: 'Poppins', sans-serif; font-weight: bold; text-align: center; }
-    
-    /* Clean Cryptographic Authorization Layout Boxes */
-    .landing-gate { background: linear-gradient(145px, #111827 0%, #030712 100%); padding: 40px; border-radius: 20px; border: 2px solid #3b82f6; max-width: 550px; margin: 50px auto; box-shadow: 0px 20px 50px rgba(59, 130, 246, 0.15); }
-    .panel-lock-indicator { background-color: #1f2937; padding: 15px; border-radius: 12px; border-left: 5px solid #ef4444; margin-bottom: 20px; }
-    
-    /* Graphic Pampalet Template Blueprint Frameworks */
-    .pampalet-gold { background: linear-gradient(135px, #1e1b4b 0%, #311042 100%); border: 4px dashed #fbbf24; padding: 45px; border-radius: 24px; text-align: center; color: white; max-width: 650px; margin: 0 auto; box-shadow: 0 10px 30px rgba(251,191,36,0.2); }
-    .pampalet-cyber { background: linear-gradient(135px, #0f172a 0%, #1e1b4b 100%); border: 4px dashed #ec4899; padding: 45px; border-radius: 24px; text-align: center; color: white; max-width: 650px; margin: 0 auto; box-shadow: 0 10px 30px rgba(236,72,153,0.2); }
-    .pampalet-vintage { background: linear-gradient(135px, #451a03 0%, #78350f 100%); border: 4px dashed #f59e0b; padding: 45px; border-radius: 24px; text-align: center; color: white; max-width: 650px; margin: 0 auto; box-shadow: 0 10px 30px rgba(245,158,11,0.2); }
-    
-    /* Hardware Video Studio Monitor Mockup Box */
-    .studio-monitor { background-color: #020617; border: 4px solid #06b6d4; border-radius: 24px; padding: 30px; box-shadow: 0px 20px 45px rgba(6, 182, 212, 0.25); text-align: center; max-width: 850px; margin: 20px auto; }
-    .export-node-box { background-color: #090d16; padding: 20px; border-radius: 16px; border: 1px dashed #45f3ff; margin-top: 20px; text-align: center; }
-    
-    /* Direct Functional Actions Core Component Styling */
-    .stButton>button { background: linear-gradient(90px, #3b82f6 0%, #2563eb 100%); color: white; font-weight: bold; border-radius: 10px; padding: 12px; width: 100%; border: none; font-size:16px; }
-    </style>
-""", unsafe_allow_html=True)
+WISHES = {
+    "Dil se (Hinglish)": "Tumhara har sapna sach ho aur ye saal khushiyon se bhara ho. Janamdin mubarak!",
+    "Classic": "May your special day be filled with love, laughter and beautiful memories.",
+    "Short & sweet": "Another year older, another year more amazing. Have the best day ever!",
+    "Blessings": "Wishing you good health, endless happiness and success in everything you do. Stay blessed always!",
+    "Funny": "You're not old, you're just a classic edition. Eat extra cake today!",
+    "✍️ Apna khud ka likhein": "",
+}
 
-# =====================================================================
-# 2. GLOBAL SYSTEM MEMORY INITIALIZATION (CORE STATE ENGINE)
-# =====================================================================
-if "active_session_panel" not in st.session_state:
-    st.session_state.active_session_panel = None
-if "login_form_visible" not in st.session_state:
-    st.session_state.login_form_visible = False
+W, H, S = 1080, 1440, 2  # card size (px) and supersampling factor (anti-aliasing)
 
-# Default Values derived from Panel 1 Administrative Core
-if "meta_name" not in st.session_state: st.session_state.meta_name = "Sunita"
-if "meta_age" not in st.session_state: st.session_state.meta_age = 22
-if "meta_gender" not in st.session_state: st.session_state.meta_gender = "Girl"
-if "meta_wish" not in st.session_state: st.session_state.meta_wish = "May your special day be packed with timeless beautiful memories!"
-if "meta_relation" not in st.session_state: st.session_state.meta_relation = "Best Friend"
-
-# Custom Security Keys Database Configurations
-if "pass_p1" not in st.session_state: st.session_state.pass_p1 = "admin123"
-if "pass_p2" not in st.session_state: st.session_state.pass_p2 = "card123"
-if "pass_p3" not in st.session_state: st.session_state.pass_p3 = "video123"
 
 # =====================================================================
-# 3. ROOT ENVIRONMENT ROUTING MECHANISMS (SAAS VIEWER ENGINE)
+# 2. CARD ENGINE (Pillow)
 # =====================================================================
-url_parameters = st.query_params
+FONT_DIRS = [Path(__file__).parent / "fonts", Path("/usr/share/fonts/truetype/dejavu"),
+             Path("/usr/share/fonts/truetype/liberation"), Path("/usr/share/fonts/truetype/freefont"),
+             Path("/usr/share/fonts/truetype/noto"), Path("/usr/share/fonts/opentype/noto"),
+             Path("/Library/Fonts"), Path("C:/Windows/Fonts")]
 
-if "view" in url_parameters:
-    target_view = url_parameters["view"]
-    r_name = url_parameters.get("name", "Celebrant")
-    r_age = url_parameters.get("age", "25")
-    r_gender = url_parameters.get("gender", "Female")
-    r_relation = url_parameters.get("relation", "Friend")
-    
-    st.balloons()
-    
-    if target_view == "card":
-        r_pampalet = url_parameters.get("pampalet", "gold")
-        card_css = "pampalet-gold"
-        accent_color = "#fbbf24"
-        if r_pampalet == "cyber":
-            card_css = "pampalet-cyber"
-            accent_color = "#ec4899"
-        elif r_pampalet == "vintage":
-            card_css = "pampalet-vintage"
-            accent_color = "#f59e0b"
-            
-        st.markdown(f"""
-            <div class="{card_css}">
-                <h1 style="color: {accent_color} !important; font-size:46px; margin:0;">🎉 HAPPY BIRTHDAY 🎉</h1>
-                <h2 style="color:#ffffff !important; letter-spacing:2px; margin:15px 0;">👑 {r_name.upper()} 👑</h2>
-                <p style="font-size:16px; color:#94a3b8; margin:0;">Gender: {r_gender} | Age Milestone: {r_age} Years | Dedicated {r_relation} Edition</p>
-                <hr style="border-color:{accent_color};">
-                <p style="font-size: 20px; font-style: italic; color:#f1f5f9;">"Wishing you high-frame-rate happiness today and forever!"</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-    elif target_view == "video":
-        r_singer = url_parameters.get("singer", "Arijit")
-        r_fx = url_parameters.get("fx", "Neon")
-        audio_stream = "https://soundhelix.com" if r_singer == "Arijit" else "https://soundhelix.com"
-        
-        st.markdown("<div class='studio-monitor'>", unsafe_allow_html=True)
-        st.markdown(f"<h1 style='color:#06b6d4 !important; margin:0;'>🍿 LIVE STREAM TIMELINE GENERATED FOR {r_name.upper()}</h1>", unsafe_allow_html=True)
-        st.audio(audio_stream, format="audio/mp3", autoplay=True)
-        st.markdown(f"<h2 style='color:#fbbf24 !important; font-weight:bold; margin-top:30px;'>🎉 Happy Birthday to you, {r_name}! 🎉</h2>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-    st.stop()
+FONT_FILES = {
+    "title": ["PlayfairDisplay-BoldItalic.ttf", "PlayfairDisplay-Bold.ttf", "DejaVuSerif-BoldItalic.ttf",
+              "DejaVuSerif-Bold.ttf", "georgiaz.ttf", "LiberationSerif-BoldItalic.ttf"],
+    "name": ["PlayfairDisplay-Bold.ttf", "DejaVuSerif-Bold.ttf", "georgiab.ttf", "LiberationSerif-Bold.ttf"],
+    "body": ["DejaVuSerif-Italic.ttf", "LiberationSerif-Italic.ttf", "georgiai.ttf", "DejaVuSans.ttf"],
+    "sans": ["Poppins-SemiBold.ttf", "DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf", "arialbd.ttf"],
+    "deva": ["NotoSansDevanagari-Bold.ttf", "FreeSerifBold.ttf", "Nirmala.ttf", "mangal.ttf"],
+}
+_font_cache = {}
 
-# =====================================================================
-# 4. INITIAL EMPTY CLEAN LANDING PAGE LAYOUT INTERFACE
-# =====================================================================
-if st.session_state.active_session_panel is None:
-    st.title("⚡ AI Lyrical Birthday Studio Engine Pro")
-    st.markdown("<p style='text-align:center; color:#64748b;'>Database Server Matrix Portal Gateway Client Workspace Node</p>", unsafe_allow_html=True)
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    
-    # CLICKABLE TOUCH BUTTON IMPLEMENTED INSTEAD OF CHECKBOX
-    login_btn_label = "🔒 Close Secure Login Terminal" if st.session_state.login_form_visible else "🔓 Open Secure Multi-User Login Terminal"
-    if st.button(login_btn_label):
-        st.session_state.login_form_visible = not st.session_state.login_form_visible
-        st.rerun()
-        
-    if st.session_state.login_form_visible:
-        st.markdown("<div class='landing-gate'>", unsafe_allow_html=True)
-        st.markdown("<h3>🔒 USER IDENTITY VERIFICATION GATEWAY</h3>", unsafe_allow_html=True)
-        
-        user_identity_selection = st.selectbox("Choose Target Panel Clearance ID:", ["-- Scroll List: Select Workspace --", "PANEL 1: Admin Metadata Controller", "PANEL 2: High-Res Designer Card Frame", "PANEL 3: Cinematic Video Studio Remixer"])
-        user_password_input = st.text_input("Enter Crypto Key Token (Password):", type="password", placeholder="••••••••")
-        
-        if st.button("🚀 Process Key Tokens & Enter Workspace"):
-            if user_identity_selection == "PANEL 1: Admin Metadata Controller" and user_password_input == st.session_state.pass_p1:
-                st.session_state.active_session_panel = "P1"
-                st.rerun()
-            elif user_identity_selection == "PANEL 2: High-Res Designer Card Frame" and user_password_input == st.session_state.pass_p2:
-                st.session_state.active_session_panel = "P2"
-                st.rerun()
-            elif user_identity_selection == "PANEL 3: Cinematic Video Studio Remixer" and user_password_input == st.session_state.pass_p3:
-                st.session_state.active_session_panel = "P3"
-                st.rerun()
+
+def get_font(role, size):
+    size = int(size)
+    key = (role, size)
+    if key in _font_cache:
+        return _font_cache[key]
+    font = None
+    for fname in FONT_FILES[role]:
+        for d in FONT_DIRS:
+            p = d / fname
+            if p.exists():
+                try:
+                    font = ImageFont.truetype(str(p), size)
+                    break
+                except Exception:
+                    pass
+        if font:
+            break
+    if font is None:
+        font = ImageFont.load_default(size)
+    _font_cache[key] = font
+    return font
+
+
+def has_devanagari(text):
+    return bool(re.search(r"[\u0900-\u097F]", text or ""))
+
+
+def pick_role(role, text):
+    return "deva" if has_devanagari(text) else role
+
+
+def hex_rgb(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def s(v):
+    return int(round(v * S))
+
+
+def gradient(size, c1, c2):
+    grad = Image.linear_gradient("L").resize(size)  # black(top) -> white(bottom)
+    return Image.composite(Image.new("RGB", size, hex_rgb(c2)), Image.new("RGB", size, hex_rgb(c1)), grad)
+
+
+def fit_font(draw, text, role, start, max_w, min_size=28):
+    size = start
+    while size > min_size:
+        f = get_font(role, s(size))
+        if draw.textlength(text, font=f) <= s(max_w):
+            return f, size
+        size -= 4
+    return get_font(role, s(min_size)), min_size
+
+
+def wrap(draw, text, font, max_w):
+    lines = []
+    for para in text.split("\n"):
+        cur = ""
+        for word in para.split():
+            t = (cur + " " + word).strip()
+            if draw.textlength(t, font=font) <= s(max_w) or not cur:
+                cur = t
             else:
-                st.error("❌ Identification mismatch! Credentials validation failed.")
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
+                lines.append(cur)
+                cur = word
+        lines.append(cur)
+    return lines
 
-# Exit Workspace Action Button
-if st.button("🔙 Terminate Workspace Session & Return to Empty Landing Page"):
-    st.session_state.active_session_panel = None
-    st.session_state.login_form_visible = False
-    st.rerun()
 
-# =====================================================================
-# PANEL 1 WORKSPACE: MASTER METADATA REGISTRATION FORM (ONLY PANEL 1)
-# =====================================================================
-if st.session_state.active_session_panel == "P1":
-    st.header("⚙️ PANEL 1 WORKSPACE: Master Metadata Registration Form")
-    
-    # Balanced structural columns layouts for form and password configurations
-    col_p1_a, col_p1_b = st.columns(2)
-    
-    with col_p1_a:
-        st.markdown("<div class='panel-lock-indicator'><h4>📋 Target Core Meta Profiles Registration</h4></div>", unsafe_allow_html=True)
-        
-        # Complete structured birthday metadata registration form fields
-        f_name = st.text_input("Celebrant Target Name (Naam Kya Hai?):", st.session_state.meta_name)
-        f_age = st.number_input("Celebrant Milestone Age (Kitne Saal Ka Hai?):", min_value=1, max_value=120, value=int(st.session_state.meta_age))
-        
-        # Gender Selection Criteria with Male, Female, and Transgender criteria options
-        f_gender = st.radio("Gender Profile Matrix Chunein (Male/Female/Transgender):", ["Male", "Female", "Transgender"], index=0 if st.session_state.meta_gender == "Male" else 1 if st.session_state.meta_gender == "Female" else 2)
-        
-        f_wish = st.text_area("Custom Best Wish Quote Input (Agar aap likhna chahein toh):", st.session_state.meta_wish)
-        f_relation = st.selectbox("Relationship Alignment (Rishta Kya Hai?):", ["Best Friend", "Brother", "Sister", "Partner/Love", "Family Member", "Colleague"])
-        
-        # Core deployment trigger button to push data parameters instantly downstream
-        if st.button("💾 Synchronize Metadata Parameters Across Ecosystem"):
-            st.session_state.meta_name = f_name
-            st.session_state.meta_age = f_age
-            st.session_state.meta_gender = f_gender
-            st.session_state.meta_wish = f_wish
-            st.session_state.meta_relation = f_relation
-            st.success("🎉 Metadata global parameters successfully locked! Panel 2 and 3 have been synchronized.")
+def spaced_text(draw, cx, cy, text, font, fill, spacing):
+    widths = [draw.textlength(ch, font=font) for ch in text]
+    total = sum(widths) + spacing * (len(text) - 1)
+    x = cx - total / 2
+    for ch, w in zip(text, widths):
+        draw.text((x, cy), ch, font=font, fill=fill, anchor="lm")
+        x += w + spacing
 
-    with col_p1_b:
-        st.markdown("<div class='panel-lock-indicator'><h4>⚙️ System Authorization Override Configurations</h4></div>", unsafe_allow_html=True)
-        
-        # --- THE BUTTON HIDE/UNHIDE SYSTEM FOR PASSWORDS ---
-        # Toggle checkbox button that securely unhides/hides the credential modifier form elements
-        show_key_changer = st.checkbox("🛠️ Toggle Password Modifier Controller Form", value=False)
-        
-        if show_key_changer:
-            st.subheader("Modify Workspace Clearance Tokens")
-            st.caption("Change database authorization security pass-keys for all panels below:")
-            
-            # Input fields to live rewrite system authentication keys database variables
-            up_p1 = st.text_input("Update Panel 1 Password Token (Admin Form):", value=st.session_state.pass_p1, type="password")
-            up_p2 = st.text_input("Update Panel 2 Password Token (Design Card):", value=st.session_state.pass_p2, type="password")
-            up_p3 = st.text_input("Update Panel 3 Password Token (Video Mixer):", value=st.session_state.pass_p3, type="password")
-            
-            if st.button("🔒 Overwrite Security Database Keys"):
-                st.session_state.pass_p1 = up_p1
-                st.session_state.pass_p2 = up_p2
-                st.session_state.pass_p3 = up_p3
-                st.success("⚡ Database cryptographic authentication matrix keys updated securely across system!")
 
-# =====================================================================
-# PANEL 2 WORKSPACE: PREMIUM CUSTOM FRAME CARD GENERATOR (ONLY PANEL 2)
-# =====================================================================
-elif st.session_state.active_session_panel == "P2":
-    st.header("🖼️ PANEL 2 WORKSPACE: Premium Designer Card Engine")
-    
-    st.info(f"📥 **Panel 1 Sync Active:** Name: `{st.session_state.meta_name}` | Age: `{st.session_state.meta_age}` | Relation: `{st.session_state.meta_relation}`")
-    
-    c1, c2 = st.columns(2)
-    
-    with c1:
-        st.markdown("### 🎨 Template Styles Selection")
-        # Dono templates (Purple aur Pink) ko dropdown list me add kiya hai
-        pampalet_design = st.selectbox("Choose Layout Template (प्रारूप चूनें):", [
-            "🏆 Premium Lavender Purple Birthday Frame (Balloons & Teddy)",
-            "💖 Sweet Rose Pink Birthday Frame (Elegant Balloons & Cake)"
-        ])
-        pampalet_slug = "purple" if "Lavender" in pampalet_design else "pink"
-        
-        # Panel 1 ke data se dynamic wishes create karne ka framework
-        preset_wishes_nodes = [
-            st.session_state.meta_wish,
-            "May your day be as beautiful and amazing as you are.\nFILLED WITH LOVE, LAUGHTER & HAPPINESS",
-            f"Wishing a magnificent {st.session_state.meta_age}th birthday to the most awesome {st.session_state.meta_relation} in the world! Stay blessed always."
-        ]
-        chosen_wish_text = st.selectbox("Select Best Wish Quotes (शुभकामना संदेश):", preset_wishes_nodes)
-        
-        # Main photo uploader tool
-        uploaded_portrait = st.file_uploader("Upload Portrait Photo Asset (Gol Ghere Me Auto-Fit Hogi):", type=["jpg", "png", "jpeg"], key="p2_premium_uploader")
-        render_pampalet_btn = st.button("✨ Compile Graphics Layout Grid & Render Card")
-        
-    with c2:
-        st.markdown("### 🍿 Real-Time Render Output Monitor Canvas")
-        if render_pampalet_btn:
-            st.balloons()
-            
-            # --- ADVANCED PILLOW MASKING ENGINE FOR PERFECT CIRCLE FIT ---
-            if uploaded_portrait:
-                from PIL import ImageDraw, ImageOps
-                
-                # Raw image load karke convert karein
-                user_img = Image.open(uploaded_portrait).convert("RGBA")
-                
-                # Auto center crop logic to make square aspect ratio
-                width, height = user_img.size
-                min_dim = min(width, height)
-                user_img = user_img.crop(((width-min_dim)/2, (height-min_dim)/2, (width+min_dim)/2, (height+min_dim)/2))
-                
-                # Standard circle dimension block (400x400 size for smooth output)
-                frame_size = (400, 400)
-                user_img = user_img.resize(frame_size, Image.Resampling.LANCZOS)
-                
-                # Gol canvas layout mask create karein
-                mask = Image.new("L", frame_size, 0)
-                draw = ImageDraw.Draw(mask)
-                draw.ellipse((0, 0) + frame_size, fill=255)
-                
-                # Photo ko perfect dynamic circle cutout template me inject karein
-                circular_portrait = ImageOps.fit(user_img, frame_size, centering=(0.5, 0.5))
-                circular_portrait.putalpha(mask)
-                
-                st.markdown("<div style='text-align: center; margin-bottom: 15px;'>👑 <b>AI Frame Asset Processing Live View</b> 👑</div>", unsafe_allow_html=True)
-                st.image(circular_portrait, caption="AI Auto-Fit Perfect Circular Frame Cutout Enacted", use_container_width=False, width=250)
-            
-            # --- THEME DESIGN SWITCHER CODE MATRIX ---
-            if pampalet_slug == "purple":
-                bg_style = "background: linear-gradient(135px, #f5f3ff 0%, #edd8f3 100%); border: 4px solid #b794f4; color: #44337a;"
-                title_color = "#6b46c1"
-                ribbon_color = "#d6bcfa"
-                border_color = "#b794f4"
-                text_tag = "🎈 TO SOMEONE SPECIAL 🎈"
-            else:
-                bg_style = "background: linear-gradient(135px, #fff5f5 0%, #ffe3e3 100%); border: 4px solid #f43f5e; color: #880e4f;"
-                title_color = "#e11d48"
-                ribbon_color = "#fecdd3"
-                border_color = "#fb7185"
-                text_tag = f"💕 Wishing You A Day Full Of Love & Joy 💕"
-                
-            # Live Beautiful Digital HTML Output Display matching user layout parameters
-            st.markdown(f"""
-                <div style="{bg_style} padding: 40px; border-radius: 24px; text-align: center; max-width: 600px; margin: 0 auto; box-shadow: 0 15px 35px rgba(0,0,0,0.1);">
-                    <div style="font-size: 16px; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; color: {title_color};">✨ WISHING YOU A ✨</div>
-                    <h1 style="color: {title_color} !important; font-size: 50px; font-family: 'Georgia', serif; margin: 10px 0; font-style: italic; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">Happy Birthday!</h1>
-                    <div style="background-color: {ribbon_color}; padding: 6px 22px; display: inline-block; border-radius: 20px; font-weight: bold; margin-bottom: 25px;">{text_tag}</div>
-                    
-                    <!-- DYNAMIC REPLACED NAME BLOCK -->
-                    <h2 style="color: {title_color} !important; margin: 5px 0; font-size: 32px; letter-spacing: 2px;">👑 {st.session_state.meta_name.upper()} 👑</h2>
-                    
-                    <!-- PERFECT SHAPE RECYCLING CIRCULAR COMPILER COMPONENT SLOT -->
-                    <div style="border: 4px dashed {border_color}; width: 220px; height: 220px; border-radius: 50%; margin: 20px auto; display: flex; align-items: center; justify-content: center; background-color: #ffffff; box-shadow: inset 0 0 10px rgba(0,0,0,0.05);">
-                        <span style="color: {border_color}; font-size: 14px; font-weight: bold;">{"📷 Portrait Placed" if uploaded_portrait else "📷 YOUR PHOTO HERE"}</span>
-                    </div>
-                    
-                    <hr style="border-color: {ribbon_color}; margin: 25px 0;">
-                    <p style="font-size: 18px; font-style: italic; line-height: 1.6;">"{chosen_wish_text}"</p>
-                    
-                    <div style="background-color: {ribbon_color}; padding: 10px; border-radius: 12px; font-size: 20px; font-weight: bold; margin-top: 25px; color: {title_color};">
-                        ✨ Enjoy Your Special {st.session_state.meta_age}th Day! ✨
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-                
-            # Dual export dynamic distribution action buttons (Download + 24Hr active Link)
-            st.markdown("<div class='export-node-box'>", unsafe_allow_html=True)
-            ex_col1, ex_col2 = st.columns(2)
-            with ex_col1:
-                # Button 1: Physical image layout resource data download button 
-                st.download_button(label="💾 Download HD PNG Card Layout File", data=b"MockPNGAssetDataBuffer", file_name=f"{st.session_state.meta_name}_birthday_card.png", mime="image/png")
-            with ex_col2:
-                # Button 2: URL Parameters integration code server address node link
-                secure_24h_card_link = f"https://streamlit.app{st.session_state.meta_name.replace(' ', '%20')}&age={st.session_state.meta_age}&gender={st.session_state.meta_gender}&relation={st.session_state.meta_relation.replace(' ', '%20')}&pampalet={pampalet_slug}"
-                st.info("🕒 Temporary Server Link (Valid for 24 Hrs):")
-                st.code(secure_24h_card_link, language="text")
-                
-            wa_api_route = f"https://whatsapp.com{st.session_state.meta_name}!%20Check%20it%20out%20here%20👉%20{secure_24h_card_link}"
-            st.markdown(f'<a href="{wa_api_route}" target="_blank"><button style="background-color:#25D366; color:white; border-radius:8px; padding:10px; width:100%; border:none; font-weight:bold; cursor:pointer;">📲 Direct Share Active Asset Via WhatsApp</button></a>', unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+def sparkle(d, cx, cy, r, fill):
+    pts = []
+    for i in range(8):
+        ang = math.pi / 4 * i - math.pi / 2
+        rad = r if i % 2 == 0 else r * 0.28
+        pts.append((cx + rad * math.cos(ang), cy + rad * math.sin(ang)))
+    d.polygon(pts, fill=fill)
+
+
+def balloon(d, cx, cy, r, color):
+    c = hex_rgb(color)
+    rx, ry = r, r * 1.22
+    d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=c + (255,))
+    # soft shade on the lower right + highlight on the upper left
+    d.pieslice([cx - rx, cy - ry, cx + rx, cy + ry], 20, 110, fill=(0, 0, 0, 38))
+    d.ellipse([cx - rx * 0.55, cy - ry * 0.68, cx - rx * 0.12, cy - ry * 0.28], fill=(255, 255, 255, 120))
+    # knot
+    ky = cy + ry
+    d.polygon([(cx, ky - s(2)), (cx - r * 0.13, ky + r * 0.2), (cx + r * 0.13, ky + r * 0.2)], fill=c + (255,))
+
+
+def balloon_string(d, x0, y0, x1, y1, color=(255, 255, 255, 170), width=3):
+    pts = []
+    for i in range(25):
+        t = i / 24
+        pts.append((x0 + (x1 - x0) * t + math.sin(t * math.pi * 2) * s(10) * (1 - t), y0 + (y1 - y0) * t))
+    d.line(pts, fill=color, width=s(width), joint="curve")
+
+
+def balloon_cluster(d, anchor, specs, colors, mirror=False):
+    ax, ay = anchor
+    for i, (dx, dy, r) in enumerate(specs):
+        x = ax + (-dx if mirror else dx)
+        y = ay + dy
+        rr = s(r)
+        balloon_string(d, s(x), s(y) + rr * 1.22 + rr * 0.2, s(ax), s(ay))
+        balloon(d, s(x), s(y), rr, colors[i % len(colors)])
+
+
+def bunting(d, colors):
+    n = 14
+    pts = [(W * i / n, 34 + 30 * math.sin(math.pi * i / n)) for i in range(n + 1)]
+    d.line([(s(x), s(y)) for x, y in pts], fill=(255, 255, 255, 200), width=s(3))
+    for i in range(n):
+        (x0, y0), (x1, y1) = pts[i], pts[i + 1]
+        mx = (x0 + x1) / 2
+        d.polygon([(s(x0 + 6), s(y0)), (s(x1 - 6), s(y1)), (s(mx), s((y0 + y1) / 2 + 62))],
+                  fill=hex_rgb(colors[i % len(colors)]) + (255,))
+
+
+def confetti(d, rng, colors, keep_out, n=150):
+    for _ in range(n):
+        x, y = rng.uniform(10, W - 10), rng.uniform(100, H - 20)
+        if math.hypot(x - keep_out[0], y - keep_out[1]) < keep_out[2]:
+            continue
+        col = hex_rgb(rng.choice(colors)) + (rng.randint(130, 230),)
+        sz = rng.uniform(5, 13)
+        if rng.random() < 0.5:
+            d.ellipse([s(x - sz / 2), s(y - sz / 2), s(x + sz / 2), s(y + sz / 2)], fill=col)
         else:
-            st.info("Layout Template (Lavender Purple ya Sweet Rose Pink) select karein, photo upload karein aur magic output dekhne ke liye button dabayein.")
+            ang = rng.uniform(0, math.pi)
+            dx, dy = math.cos(ang) * sz, math.sin(ang) * sz
+            d.line([(s(x - dx), s(y - dy)), (s(x + dx), s(y + dy))], fill=col, width=s(4))
+
+
+def circular_photo(photo_bytes, diameter, focus_y):
+    img = Image.open(io.BytesIO(photo_bytes))
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    img = ImageOps.fit(img, (diameter, diameter), Image.Resampling.LANCZOS, centering=(0.5, focus_y))
+    mask = Image.new("L", (diameter * 4, diameter * 4), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, diameter * 4 - 1, diameter * 4 - 1), fill=255)
+    mask = mask.resize((diameter, diameter), Image.Resampling.LANCZOS)
+    img.putalpha(mask)
+    return img
+
+
+def render_card(theme_name, name, age, show_age, relation, wish, sender, photo_bytes, focus_y, seed):
+    th = THEMES[theme_name]
+    rng = random.Random(seed)
+
+    img = gradient((W * S, H * S), *th["bg"])
+    d = ImageDraw.Draw(img, "RGBA")
+
+    photo_c = (540, 575)
+    photo_r = 205
+
+    # soft glow behind the photo
+    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gr = s(photo_r + 70)
+    gd.ellipse([s(photo_c[0]) - gr, s(photo_c[1]) - gr, s(photo_c[0]) + gr, s(photo_c[1]) + gr],
+               fill=hex_rgb(th["glow"]) + (150,))
+    glow = glow.filter(ImageFilter.GaussianBlur(s(45)))
+    img.paste(glow, (0, 0), glow)
+    d = ImageDraw.Draw(img, "RGBA")
+
+    # decorations
+    confetti(d, rng, th["confetti"], (photo_c[0], photo_c[1], photo_r + 40))
+    bunting(d, th["balloons"])
+    specs = [(0, 0, 66), (-62, 100, 58), (66, 108, 56)]
+    balloon_cluster(d, (140, 820), [(x, y - 250, r) for x, y, r in specs], th["balloons"])
+    balloon_cluster(d, (940, 820), [(x, y - 250, r) for x, y, r in specs], th["balloons"][::-1], mirror=True)
+    for (x, y, r) in [(300, 330, 20), (800, 345, 24), (250, 790, 16), (840, 800, 18), (960, 150, 14), (110, 160, 16)]:
+        sparkle(d, s(x), s(y), s(r), hex_rgb(th["accent"]) + (230,))
+
+    # heading
+    f_tag = get_font("sans", s(26))
+    spaced_text(d, s(540), s(128), "W I S H I N G   Y O U   A", f_tag, hex_rgb(th["accent"]) + (255,), s(2))
+    f_title, _ = fit_font(d, "Happy Birthday", "title", 128, 900)
+    d.text((s(540) + s(3), s(215) + s(4)), "Happy Birthday", font=f_title, fill=(0, 0, 0, 70), anchor="mm")
+    d.text((s(540), s(215)), "Happy Birthday", font=f_title, fill=hex_rgb(th["title"]), anchor="mm")
+
+    # photo with double ring
+    cx, cy, r = s(photo_c[0]), s(photo_c[1]), s(photo_r)
+    d.ellipse([cx - r - s(26), cy - r - s(26), cx + r + s(26), cy + r + s(26)], outline=hex_rgb(th["accent"]) + (255,), width=s(8))
+    d.ellipse([cx - r - s(10), cy - r - s(10), cx + r + s(10), cy + r + s(10)], fill=hex_rgb(th["ring"]) + (255,))
+    if photo_bytes:
+        pic = circular_photo(photo_bytes, r * 2, focus_y)
+        img.paste(pic, (cx - r, cy - r), pic)
+    else:
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=hex_rgb(th["accent"]) + (255,))
+        initial = (name.strip()[:1] or "★").upper()
+        d.text((cx, cy), initial, font=get_font(pick_role("title", initial), s(260)),
+               fill=hex_rgb(th["badge_text"]), anchor="mm")
+    d = ImageDraw.Draw(img, "RGBA")
+
+    # age badge
+    if show_age and age:
+        bx, by, br = s(photo_c[0] + 165), s(photo_c[1] + 170), s(66)
+        d.ellipse([bx - br - s(7), by - br - s(7), bx + br + s(7), by + br + s(7)], fill=hex_rgb(th["ring"]) + (255,))
+        d.ellipse([bx - br, by - br, bx + br, by + br], fill=hex_rgb(th["accent"]) + (255,))
+        d.text((bx, by - s(6)), str(age), font=get_font("sans", s(60 if age < 100 else 44)),
+               fill=hex_rgb(th["badge_text"]), anchor="mm")
+        d.text((bx, by + s(36)), "YEARS", font=get_font("sans", s(15)), fill=hex_rgb(th["badge_text"]), anchor="mm")
+
+    # name
+    name_txt = (name.strip() or "Your Name")
+    name_txt = name_txt.upper() if not has_devanagari(name_txt) else name_txt
+    f_name, _ = fit_font(d, name_txt, pick_role("name", name_txt), 104, 860)
+    d.text((s(540) + s(2), s(895) + s(3)), name_txt, font=f_name, fill=(0, 0, 0, 60), anchor="mm")
+    d.text((s(540), s(895)), name_txt, font=f_name, fill=hex_rgb(th["text"]), anchor="mm")
+
+    y = 965
+    if relation.strip():
+        f_rel = get_font(pick_role("sans", relation), s(28))
+        spaced_text(d, s(540), s(y), relation.strip().upper(), f_rel, hex_rgb(th["accent"]) + (255,), s(5))
+        y += 50
+
+    # divider
+    y += 8
+    d.line([(s(300), s(y)), (s(500), s(y))], fill=hex_rgb(th["accent"]) + (255,), width=s(3))
+    d.line([(s(580), s(y)), (s(780), s(y))], fill=hex_rgb(th["accent"]) + (255,), width=s(3))
+    sparkle(d, s(540), s(y), s(15), hex_rgb(th["accent"]) + (255,))
+    y += 55
+
+    # wish
+    wish = wish.strip() or WISHES["Classic"]
+    wrole = pick_role("body", wish)
+    size = 40
+    while size > 26:
+        f_w = get_font(wrole, s(size))
+        lines = wrap(d, wish, f_w, 800)
+        if len(lines) <= 5:
+            break
+        size -= 2
+    lh = size * 1.45
+    for i, line in enumerate(lines[:6]):
+        d.text((s(540), s(y + i * lh)), line, font=f_w, fill=hex_rgb(th["text"]) + (240,), anchor="mm")
+    y_end = y + len(lines[:6]) * lh
+
+    # sender
+    if sender.strip():
+        f_s = get_font(pick_role("name", sender), s(36))
+        d.text((s(540), s(max(y_end + 40, 1320))), f"With love, {sender.strip()}", font=f_s,
+               fill=hex_rgb(th["title"]), anchor="mm")
+
+    return img.resize((W, H), Image.Resampling.LANCZOS)
+
+
+def to_bytes(img, fmt="PNG"):
+    buf = io.BytesIO()
+    if fmt == "JPEG":
+        img.convert("RGB").save(buf, "JPEG", quality=95)
+    else:
+        img.save(buf, "PNG")
+    return buf.getvalue()
+
 
 # =====================================================================
-# PANEL 3 WORKSPACE: CINEMATIC VIDEO STUDIO REMIXER (ONLY PANEL 3)
+# 3. STREAMLIT UI
 # =====================================================================
-elif st.session_state.active_session_panel == "P3":
-    st.header("🎬 PANEL 3 WORKSPACE: Premium AI Lyrical Video & Voice Studio")
-    
-    # Panel 1 se aaye hue raw data ko top bar me automatically load karne ka module block
-    st.info(f"📥 **Panel 1 Data Synced Automatically:** Name: `{st.session_state.meta_name}` | Age: `{st.session_state.meta_age}` | Gender: `{st.session_state.meta_gender}` | Relation: `{st.session_state.meta_relation}`")
-    
-    # Balanced structural columns layouts for timeline mixer components
-    v1, v2 = st.columns(2)
-    
-    with v1:
-        st.markdown("### 🎛️ AI Waveform Track Remixer Controls")
-        
-        # Multiple real-time video format layouts presets configuration
-        video_format = st.selectbox("Choose Cinematic Video Format Template (वीडियो फॉर्मेट प्रारूप चूनें):", [
-            "🎥 4K Ultra-HD Cinematic Landscape Master (16:9)",
-            "📱 Premium Mobile Vertical Reels Format (9:16)",
-            "⏹️ Modern Social Square Slideshow Grid (1:1)"
-        ])
-        
-        # Audio custom tracks aligned with singer identities select configurations
-        target_vocalist = st.selectbox("🎙️ Select AI Singer Voice Module Engine (सिंगर की आवाज चुनें):", [
-            f"🔊 Arijit Singh AI Vocal Engine (Custom Dedicated to {st.session_state.meta_name})", 
-            f"🔊 Neha Kakkar AI Vocal Engine (Custom Dedicated to {st.session_state.meta_name})", 
-            f"🔊 Sonu Nigam AI Vocal Engine (Custom Dedicated to {st.session_state.meta_name})"
-        ])
-        vocalist_slug = "Arijit" if "Arijit" in target_vocalist else "Neha" if "Neha" in target_vocalist else "Sonu"
-        
-        # Cinematic transition visual overlay overlay effect criteria selection matrix options
-        cinematic_vfx_filter = st.selectbox("🎆 Select Visual Cinematic VFX Effect Overlay (वीडियो इफेक्ट्स चुनें):", [
-            "✨ Pure Golden Cyberpunk Light Leaks Glow",
-            "⚡ 4K Neo-Neon Hologram Matrix Flare",
-            "🎬 Chrono Vintage Retro Fading Frame Film",
-            "🎈 Floating Birthday Magic Balloons Sparkles"
-        ])
-        
-        st.markdown("#### 📸 Photo Timeline Assets Uploader (Drop exactly 2 pictures inside target slot)")
-        slideshow_asset_images = st.file_uploader("Upload 2 Images for automatic transitions sequence timing loop:", type=["png","jpg","jpeg"], accept_multiple_files=True, key="p3_bulk_upload_node")
-        
-        compile_video_matrix_btn = st.button("🚀 Render Custom AI Voice Timeline & Compile Video")
-        
-    with v2:
-        st.markdown("### 📺 Master Monitor Program Display Viewport")
-        if compile_video_matrix_btn:
-            # Strict logic verification check: exactly 2 photos rule criteria checking
-            if slideshow_asset_images and len(slideshow_asset_images) >= 2:
-                if len(slideshow_asset_images) > 2:
-                    st.warning("⚠️ Optimized mode active: Processing only the first 2 images into render matrix block sequences.")
-                    slideshow_asset_images = slideshow_asset_images[:2]
-                    
-                with st.spinner(f"AI Matrix Synthesis active... Mixing {vocalist_slug} AI track using custom vocal alignment nodes for {st.session_state.meta_name}..."):
-                    time.sleep(1.5)
-                st.snow()
-                
-                # Setup mapping rules for dynamic sound tracks URLs based on choices dropdown selection
-                if vocalist_slug == "Arijit":
-                    audio_source_node_url = "https://soundhelix.com"
-                elif vocalist_slug == "Neha":
-                    audio_source_node_url = "https://soundhelix.com"
-                else:
-                    audio_source_node_url = "https://soundhelix.com"
-                    
-                # Main Video Playback Simulator Frame Block Display Layout
-                st.markdown("<div class='studio-monitor'>", unsafe_allow_html=True)
-                st.markdown(f"<h3 style='color:#06b6d4 !important; margin:0;'>🎬 PROGRAM MONITOR ACTIVE: {st.session_state.meta_name.upper()}__LYRICAL_HD.mp4</h3>", unsafe_allow_html=True)
-                st.markdown(f"<p style='color:#a7f3d0; font-size:14px; margin: 5px 0;'>🎤 Audio Synthesis Pipeline Verified: <b>{vocalist_slug} AI Engine</b></p>", unsafe_allow_html=True)
-                
-                # Direct custom audio playback system with instant autoplay feature trigger
-                st.write("👉 *Touch the player to manually override audio frequency controls if needed:*")
-                st.audio(audio_source_node_url, format="audio/mp3", autoplay=True)
-                
-                # Dynamic horizontal columns matrix rendering loop for images slide frames viewer
-                grid_frames_cols = st.columns(2)
-                for order_idx, target_image_file in enumerate(slideshow_asset_images):
-                    with grid_frames_cols[order_idx]:
-                        st.image(target_image_file, caption=f"Scene Frame Timeline Sequence Asset Node 0{order_idx+1}", use_container_width=True)
-                        
-                st.markdown(f"<h2 style='color:#fbbf24 !important; font-weight:bold; margin-top:20px;'>🎉 Happy Birthday to You, {st.session_state.meta_name}! 🎉</h2>", unsafe_allow_html=True)
-                st.markdown(f"<p style='color:#ffffff; font-size:16px; font-style:italic;'>🎵 Dedicated to the best {st.session_state.meta_relation} on their sweet {st.session_state.meta_age}th Milestone Year! 🎵</p>", unsafe_allow_html=True)
-                st.markdown(f"<p style='color:#94a3b8; font-size:14px;'>\"{st.session_state.meta_wish}\"</p>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-                
-                # Twin Multimedia Video Export Action Channels
-                st.markdown("<div class='export-node-box'>", unsafe_allow_html=True)
-                st.subheader("📥 Multimedia Video File Export Target Nodes")
-                
-                v_ex_col1, v_ex_col2 = st.columns(2)
-                with v_ex_col1:
-                    # Button 1: Download full video file data component structure down link node local action
-                    st.download_button(label="💾 Download Full Video Asset File (HD MP4)", data=b"MockMP4VideoAssetDataBuffer", file_name=f"{st.session_state.meta_name}_birthday_lyrical_video.mp4", mime="video/mp4")
-                with v_ex_col2:
-                    # Button 2: Generate dynamic online streaming parameter URLs matching SaaS logic rules
-                    secure_24h_video_link = f"https://streamlit.app{st.session_state.meta_name.replace(' ', '%20')}&age={st.session_state.meta_age}&gender={st.session_state.meta_gender}&relation={st.session_state.meta_relation.replace(' ', '%20')}&singer={vocalist_slug}&fx={cinematic_vfx_filter.replace(' ', '%20')}"
-                    st.info("🕒 Generated 24Hrs Active Cloud Streaming Video Node Link:")
-                    st.code(secure_24h_video_link, language="text")
-                    
-                v_wa_api_route = f"https://whatsapp.com{st.session_state.meta_name}!%20🍿👉%20{secure_24h_video_link}"
-                st.markdown(f'<a href="{v_wa_api_route}" target="_blank"><button style="background-color:#25D366; color:white; border-radius:8px; padding:10px; width:100%; border:none; font-weight:bold; cursor:pointer;">📲 Direct Share Active Video Via WhatsApp</button></a>', unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-            else:
-                st.error("❌ Multimedia Pipeline Error: Timeline build failure. Please upload exactly 2 pictures into target file slot to compile visual transitions.")
+def main():
+    import streamlit as st
+
+    st.set_page_config(page_title="Birthday Card Studio", page_icon="🎂", layout="wide")
+
+    st.markdown("""
+        <style>
+        #MainMenu, footer {visibility: hidden;}
+        .block-container {padding-top: 1.6rem; max-width: 1150px;}
+        .hero {text-align:center; padding: 6px 0 18px 0;}
+        .hero h1 {font-size: 2.3rem; margin: 0; background: linear-gradient(90deg,#f472b6,#a78bfa,#fbbf24);
+                  -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;}
+        .hero p {color:#94a3b8; margin: 4px 0 0 0;}
+        .stDownloadButton button, .stLinkButton a {width:100%; border-radius: 12px; font-weight: 600;}
+        </style>
+        <div class="hero"><h1>🎂 Birthday Card Studio</h1>
+        <p>Photo, naam aur wish daalo — card turant ban jayega</p></div>
+    """, unsafe_allow_html=True)
+
+    if "seed" not in st.session_state:
+        st.session_state.seed = 7
+
+    form, preview = st.columns([1, 1.05], gap="large")
+
+    with form:
+        st.subheader("1️⃣  Kiske liye?")
+        name = st.text_input("Naam", "Sunita")
+        c1, c2 = st.columns(2)
+        age = c1.number_input("Umar", 1, 120, 22)
+        show_age = c2.checkbox("Card pe umar dikhao", True)
+        relation = st.text_input("Rishta (optional)", "Best Friend")
+
+        st.subheader("2️⃣  Wish")
+        choice = st.selectbox("Wish chuno", list(WISHES.keys()))
+        if WISHES[choice]:
+            wish = st.text_area("Wish edit kar sakte ho", WISHES[choice], height=95)
         else:
-            st.info("Timeline parameters align karein, exactly 2 photos drop karein aur media track render karne ke liye button click karein.")
+            wish = st.text_area("Apni wish likho", "", height=95, placeholder="Yahan apna message likho…")
+        sender = st.text_input("Kisne bheja? (optional)", "")
 
-        
+        st.subheader("3️⃣  Style & Photo")
+        theme = st.radio("Theme", list(THEMES.keys()), horizontal=True, label_visibility="collapsed")
+        photo = st.file_uploader("Photo upload karo (gol frame me auto-fit hogi)", type=["jpg", "jpeg", "png", "webp"])
+        focus_y = 0.4
+        if photo:
+            focus_y = st.slider("Photo upar ↔ neeche adjust karo", 0.0, 1.0, 0.4, 0.05,
+                                help="Face frame me sahi na aaye to isse adjust karo")
+        if st.button("🎊 Confetti naya karo"):
+            st.session_state.seed += 1
+
+    @st.cache_data(show_spinner=False, max_entries=24)
+    def cached_render(*args):
+        return to_bytes(render_card(*args))
+
+    photo_bytes = photo.getvalue() if photo else None
+    png = cached_render(theme, name, int(age), show_age, relation, wish, sender,
+                        photo_bytes, focus_y, st.session_state.seed)
+
+    with preview:
+        st.image(png, use_container_width=True)
+        safe = re.sub(r"[^\w\-]+", "_", name.strip() or "card")
+        d1, d2 = st.columns(2)
+        d1.download_button("⬇️ PNG download (HD)", png, f"{safe}_birthday_card.png", "image/png")
+        jpg = to_bytes(Image.open(io.BytesIO(png)), "JPEG")
+        d2.download_button("⬇️ JPG (chhoti file)", jpg, f"{safe}_birthday_card.jpg", "image/jpeg")
+        msg = f"Happy Birthday {name.strip()}! 🎂🎉 Ye card sirf tumhare liye ❤️"
+        st.link_button("📲 WhatsApp pe bhejo", "https://wa.me/?text=" + urllib.parse.quote(msg))
+        st.caption("Pehle card download karo, phir WhatsApp me attach karke bhej do.")
+
+
+if __name__ == "__main__":
+    main()
