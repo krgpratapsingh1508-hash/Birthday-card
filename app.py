@@ -1,416 +1,476 @@
 """
-🎂 Birthday Card Studio
-Photo + naam + wish daalo -> real PNG birthday card banao, download karo, WhatsApp pe bhejo.
+🎂 Birthday Studio  —  Admin panel + User panel
+User: apni ID se Birthday Card, Album (PDF) aur Video banata hai.
+Admin: sare users ki jankari, unki banayi cheezein, ID band/chalu, password reset.
+
+Run:  streamlit run app.py
+Pehla admin login:  admin / admin123   (login ke baad turant password badal do)
 """
 import io
-import math
-import random
 import re
 import urllib.parse
-from pathlib import Path
+import zipfile
+from datetime import date
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
+import pandas as pd
+import streamlit as st
+from PIL import Image
 
-# =====================================================================
-# 1. THEMES
-# =====================================================================
-THEMES = {
-    "👑 Royal Purple": dict(
-        bg=("#2b0a5e", "#7c3aed"), title="#fde68a", text="#f5f3ff", accent="#fbbf24",
-        ring="#ffffff", glow="#c4b5fd", badge_text="#3b0764",
-        balloons=["#f472b6", "#fbbf24", "#60a5fa", "#34d399", "#fb7185", "#a78bfa"],
-        confetti=["#fbbf24", "#f472b6", "#60a5fa", "#ffffff", "#34d399"],
-    ),
-    "🌸 Rose Pink": dict(
-        bg=("#fff1f2", "#fda4af"), title="#be123c", text="#881337", accent="#e11d48",
-        ring="#ffffff", glow="#ffffff", badge_text="#ffffff",
-        balloons=["#e11d48", "#f97316", "#a855f7", "#ec4899", "#f43f5e", "#fb923c"],
-        confetti=["#e11d48", "#f59e0b", "#a855f7", "#ffffff", "#ec4899"],
-    ),
-    "✨ Midnight Gold": dict(
-        bg=("#050816", "#1e2a5a"), title="#fcd34d", text="#e2e8f0", accent="#f5c542",
-        ring="#fde68a", glow="#f5c542", badge_text="#0b1020",
-        balloons=["#f5c542", "#38bdf8", "#f472b6", "#fbbf24", "#818cf8", "#34d399"],
-        confetti=["#f5c542", "#ffffff", "#38bdf8", "#f472b6", "#818cf8"],
-    ),
-    "🌿 Mint Fresh": dict(
-        bg=("#ecfeff", "#6ee7b7"), title="#047857", text="#064e3b", accent="#059669",
-        ring="#ffffff", glow="#ffffff", badge_text="#ffffff",
-        balloons=["#f97316", "#facc15", "#3b82f6", "#ec4899", "#10b981", "#8b5cf6"],
-        confetti=["#f97316", "#facc15", "#3b82f6", "#ec4899", "#ffffff"],
-    ),
-}
+import card_engine as ce
+import db
+import media
 
-WISHES = {
-    "Dil se (Hinglish)": "Tumhara har sapna sach ho aur ye saal khushiyon se bhara ho. Janamdin mubarak!",
-    "Classic": "May your special day be filled with love, laughter and beautiful memories.",
-    "Short & sweet": "Another year older, another year more amazing. Have the best day ever!",
-    "Blessings": "Wishing you good health, endless happiness and success in everything you do. Stay blessed always!",
-    "Funny": "You're not old, you're just a classic edition. Eat extra cake today!",
-    "✍️ Apna khud ka likhein": "",
-}
+st.set_page_config(page_title="Birthday Studio", page_icon="🎂", layout="wide")
+db.init_db()
 
-W, H, S = 1080, 1440, 2  # card size (px) and supersampling factor (anti-aliasing)
+st.markdown("""
+<style>
+#MainMenu, footer {visibility: hidden;}
+.block-container {padding-top: 1.4rem; max-width: 1200px;}
+.hero {text-align:center; padding: 4px 0 14px 0;}
+.hero h1 {font-size: 2.4rem; margin: 0; background: linear-gradient(90deg,#f472b6,#a78bfa,#fbbf24);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;}
+.hero p {color:#94a3b8; margin: 4px 0 0 0;}
+.stDownloadButton button, .stLinkButton a {width:100%; border-radius: 12px; font-weight: 600;}
+.stButton button {border-radius: 12px; font-weight: 600;}
+.badge {display:inline-block; padding:2px 10px; border-radius:999px; font-size:.78rem; font-weight:700;}
+.b-admin {background:#fde68a; color:#78350f;} .b-user {background:#c4b5fd; color:#3b0764;}
+.card-box {border:1px solid rgba(148,163,184,.3); border-radius:16px; padding:14px 16px; margin-bottom:10px;}
+</style>
+""", unsafe_allow_html=True)
 
 
-# =====================================================================
-# 2. CARD ENGINE (Pillow)
-# =====================================================================
-FONT_DIRS = [Path(__file__).parent / "fonts", Path("/usr/share/fonts/truetype/dejavu"),
-             Path("/usr/share/fonts/truetype/liberation"), Path("/usr/share/fonts/truetype/freefont"),
-             Path("/usr/share/fonts/truetype/noto"), Path("/usr/share/fonts/opentype/noto"),
-             Path("/Library/Fonts"), Path("C:/Windows/Fonts")]
-
-FONT_FILES = {
-    "title": ["PlayfairDisplay-BoldItalic.ttf", "PlayfairDisplay-Bold.ttf", "DejaVuSerif-BoldItalic.ttf",
-              "DejaVuSerif-Bold.ttf", "georgiaz.ttf", "LiberationSerif-BoldItalic.ttf"],
-    "name": ["PlayfairDisplay-Bold.ttf", "DejaVuSerif-Bold.ttf", "georgiab.ttf", "LiberationSerif-Bold.ttf"],
-    "body": ["DejaVuSerif-Italic.ttf", "LiberationSerif-Italic.ttf", "georgiai.ttf", "DejaVuSans.ttf"],
-    "sans": ["Poppins-SemiBold.ttf", "DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf", "arialbd.ttf"],
-    "deva": ["NotoSansDevanagari-Bold.ttf", "FreeSerifBold.ttf", "Nirmala.ttf", "mangal.ttf"],
-}
-_font_cache = {}
+# ---------------------------------------------------------------- helpers
+def ss(key, default=None):
+    return st.session_state.get(key, default)
 
 
-def get_font(role, size):
-    size = int(size)
-    key = (role, size)
-    if key in _font_cache:
-        return _font_cache[key]
-    font = None
-    for fname in FONT_FILES[role]:
-        for d in FONT_DIRS:
-            p = d / fname
-            if p.exists():
-                try:
-                    font = ImageFont.truetype(str(p), size)
-                    break
-                except Exception:
-                    pass
-        if font:
-            break
-    if font is None:
-        font = ImageFont.load_default(size)
-    _font_cache[key] = font
-    return font
+def hero(sub):
+    st.markdown(f'<div class="hero"><h1>🎂 Birthday Studio</h1><p>{sub}</p></div>', unsafe_allow_html=True)
 
 
-def has_devanagari(text):
-    return bool(re.search(r"[\u0900-\u097F]", text or ""))
+def safe_name(txt, fallback="file"):
+    return re.sub(r"[^\w\-]+", "_", (txt or "").strip()) or fallback
 
 
-def pick_role(role, text):
-    return "deva" if has_devanagari(text) else role
+def split_lines(txt):
+    return [l.strip() for l in (txt or "").split("\n")]
 
 
-def hex_rgb(h):
-    h = h.lstrip("#")
-    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+def logout():
+    for k in list(st.session_state.keys()):
+        del st.session_state[k]
+    st.rerun()
 
 
-def s(v):
-    return int(round(v * S))
+# ---------------------------------------------------------------- AUTH PAGE
+def auth_page():
+    hero("Apni ID banao — Card, Album aur Video sab ek jagah")
+    _, mid, _ = st.columns([1, 1.3, 1])
+    with mid:
+        t_login, t_reg = st.tabs(["🔐 Login", "✨ Naya Account"])
+        with t_login:
+            who = st.radio("Kaun?", ["👤 User", "🛡️ Admin"], horizontal=True, label_visibility="collapsed")
+            with st.form("login_form"):
+                u = st.text_input("Username")
+                p = st.text_input("Password", type="password")
+                go = st.form_submit_button("Login", use_container_width=True, type="primary")
+            if go:
+                user, err = db.login(u, p)
+                if err:
+                    st.error(err)
+                elif who.endswith("Admin") and user["role"] != "admin":
+                    st.error("Ye Admin ID nahi hai. 'User' chuno.")
+                elif who.endswith("User") and user["role"] == "admin":
+                    st.error("Ye Admin ID hai. 'Admin' chuno.")
+                else:
+                    st.session_state.user = user
+                    st.rerun()
+        with t_reg:
+            with st.form("reg_form"):
+                c1, c2 = st.columns(2)
+                ru = c1.text_input("Username *", help="3-30 akshar: A-Z, 0-9, _ .")
+                rp = c2.text_input("Password * (min 6)", type="password")
+                fn = st.text_input("Poora naam *")
+                c3, c4 = st.columns(2)
+                ph = c3.text_input("Mobile number")
+                em = c4.text_input("Email")
+                c5, c6 = st.columns(2)
+                city = c5.text_input("Sheher")
+                dob = c6.date_input("Janamdin", value=date(2000, 1, 1), min_value=date(1920, 1, 1),
+                                    max_value=date.today())
+                go = st.form_submit_button("Account banao", use_container_width=True, type="primary")
+            if go:
+                if not fn.strip():
+                    st.error("Naam zaroori hai.")
+                else:
+                    ok, msg = db.register(ru, rp, fn, ph, em, city, dob.isoformat())
+                    (st.success if ok else st.error)(msg)
 
 
-def gradient(size, c1, c2):
-    grad = Image.linear_gradient("L").resize(size)  # black(top) -> white(bottom)
-    return Image.composite(Image.new("RGB", size, hex_rgb(c2)), Image.new("RGB", size, hex_rgb(c1)), grad)
+# ---------------------------------------------------------------- SIDEBAR
+def sidebar(user):
+    with st.sidebar:
+        role = user["role"]
+        st.markdown(f"### {user['full_name'] or user['username']}")
+        st.markdown(f'<span class="badge b-{role}">{role.upper()}</span> &nbsp; @{user["username"]}',
+                    unsafe_allow_html=True)
+        st.divider()
+        with st.expander("🔑 Password badlo"):
+            with st.form("pw_form", clear_on_submit=True):
+                old = st.text_input("Purana password", type="password")
+                new = st.text_input("Naya password", type="password")
+                go = st.form_submit_button("Badlo")
+            if go:
+                chk, _ = db.login(user["username"], old)
+                if not chk:
+                    st.error("Purana password galat hai.")
+                else:
+                    ok, msg = db.set_password(user["id"], new)
+                    (st.success if ok else st.error)(msg)
+        if st.button("🚪 Logout", use_container_width=True):
+            logout()
 
 
-def fit_font(draw, text, role, start, max_w, min_size=28):
-    size = start
-    while size > min_size:
-        f = get_font(role, s(size))
-        if draw.textlength(text, font=f) <= s(max_w):
-            return f, size
-        size -= 4
-    return get_font(role, s(min_size)), min_size
+# ---------------------------------------------------------------- USER: pieces
+def theme_and_basics(prefix, user):
+    c1, c2 = st.columns(2)
+    name = c1.text_input("Kiske liye? (Naam)", user["full_name"].split(" ")[0] if user["full_name"] else "",
+                         key=f"{prefix}_name")
+    age = c2.number_input("Umar", 1, 120, 22, key=f"{prefix}_age")
+    theme = st.radio("Theme", list(ce.THEMES.keys()), horizontal=True, key=f"{prefix}_theme")
+    choice = st.selectbox("Wish chuno", list(ce.WISHES.keys()), key=f"{prefix}_wc")
+    wish = st.text_area("Wish (edit kar sakte ho)", ce.WISHES[choice], height=90, key=f"{prefix}_wish_{choice}",
+                        placeholder="Yahan apna message likho…")
+    sender = st.text_input("Kisne bheja?", user["full_name"] or "", key=f"{prefix}_sender")
+    return name, int(age), theme, wish, sender
 
 
-def wrap(draw, text, font, max_w):
-    lines = []
-    for para in text.split("\n"):
-        cur = ""
-        for word in para.split():
-            t = (cur + " " + word).strip()
-            if draw.textlength(t, font=font) <= s(max_w) or not cur:
-                cur = t
-            else:
-                lines.append(cur)
-                cur = word
-        lines.append(cur)
-    return lines
-
-
-def spaced_text(draw, cx, cy, text, font, fill, spacing):
-    widths = [draw.textlength(ch, font=font) for ch in text]
-    total = sum(widths) + spacing * (len(text) - 1)
-    x = cx - total / 2
-    for ch, w in zip(text, widths):
-        draw.text((x, cy), ch, font=font, fill=fill, anchor="lm")
-        x += w + spacing
-
-
-def sparkle(d, cx, cy, r, fill):
-    pts = []
-    for i in range(8):
-        ang = math.pi / 4 * i - math.pi / 2
-        rad = r if i % 2 == 0 else r * 0.28
-        pts.append((cx + rad * math.cos(ang), cy + rad * math.sin(ang)))
-    d.polygon(pts, fill=fill)
-
-
-def balloon(d, cx, cy, r, color):
-    c = hex_rgb(color)
-    rx, ry = r, r * 1.22
-    d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=c + (255,))
-    # soft shade on the lower right + highlight on the upper left
-    d.pieslice([cx - rx, cy - ry, cx + rx, cy + ry], 20, 110, fill=(0, 0, 0, 38))
-    d.ellipse([cx - rx * 0.55, cy - ry * 0.68, cx - rx * 0.12, cy - ry * 0.28], fill=(255, 255, 255, 120))
-    # knot
-    ky = cy + ry
-    d.polygon([(cx, ky - s(2)), (cx - r * 0.13, ky + r * 0.2), (cx + r * 0.13, ky + r * 0.2)], fill=c + (255,))
-
-
-def balloon_string(d, x0, y0, x1, y1, color=(255, 255, 255, 170), width=3):
-    pts = []
-    for i in range(25):
-        t = i / 24
-        pts.append((x0 + (x1 - x0) * t + math.sin(t * math.pi * 2) * s(10) * (1 - t), y0 + (y1 - y0) * t))
-    d.line(pts, fill=color, width=s(width), joint="curve")
-
-
-def balloon_cluster(d, anchor, specs, colors, mirror=False):
-    ax, ay = anchor
-    for i, (dx, dy, r) in enumerate(specs):
-        x = ax + (-dx if mirror else dx)
-        y = ay + dy
-        rr = s(r)
-        balloon_string(d, s(x), s(y) + rr * 1.22 + rr * 0.2, s(ax), s(ay))
-        balloon(d, s(x), s(y), rr, colors[i % len(colors)])
-
-
-def bunting(d, colors):
-    n = 14
-    pts = [(W * i / n, 34 + 30 * math.sin(math.pi * i / n)) for i in range(n + 1)]
-    d.line([(s(x), s(y)) for x, y in pts], fill=(255, 255, 255, 200), width=s(3))
-    for i in range(n):
-        (x0, y0), (x1, y1) = pts[i], pts[i + 1]
-        mx = (x0 + x1) / 2
-        d.polygon([(s(x0 + 6), s(y0)), (s(x1 - 6), s(y1)), (s(mx), s((y0 + y1) / 2 + 62))],
-                  fill=hex_rgb(colors[i % len(colors)]) + (255,))
-
-
-def confetti(d, rng, colors, keep_out, n=150):
-    for _ in range(n):
-        x, y = rng.uniform(10, W - 10), rng.uniform(100, H - 20)
-        if math.hypot(x - keep_out[0], y - keep_out[1]) < keep_out[2]:
-            continue
-        col = hex_rgb(rng.choice(colors)) + (rng.randint(130, 230),)
-        sz = rng.uniform(5, 13)
-        if rng.random() < 0.5:
-            d.ellipse([s(x - sz / 2), s(y - sz / 2), s(x + sz / 2), s(y + sz / 2)], fill=col)
-        else:
-            ang = rng.uniform(0, math.pi)
-            dx, dy = math.cos(ang) * sz, math.sin(ang) * sz
-            d.line([(s(x - dx), s(y - dy)), (s(x + dx), s(y + dy))], fill=col, width=s(4))
-
-
-def circular_photo(photo_bytes, diameter, focus_y):
-    img = Image.open(io.BytesIO(photo_bytes))
-    img = ImageOps.exif_transpose(img).convert("RGB")
-    img = ImageOps.fit(img, (diameter, diameter), Image.Resampling.LANCZOS, centering=(0.5, focus_y))
-    mask = Image.new("L", (diameter * 4, diameter * 4), 0)
-    ImageDraw.Draw(mask).ellipse((0, 0, diameter * 4 - 1, diameter * 4 - 1), fill=255)
-    mask = mask.resize((diameter, diameter), Image.Resampling.LANCZOS)
-    img.putalpha(mask)
-    return img
-
-
-def render_card(theme_name, name, age, show_age, relation, wish, sender, photo_bytes, focus_y, seed):
-    th = THEMES[theme_name]
-    rng = random.Random(seed)
-
-    img = gradient((W * S, H * S), *th["bg"])
-    d = ImageDraw.Draw(img, "RGBA")
-
-    photo_c = (540, 575)
-    photo_r = 205
-
-    # soft glow behind the photo
-    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    gr = s(photo_r + 70)
-    gd.ellipse([s(photo_c[0]) - gr, s(photo_c[1]) - gr, s(photo_c[0]) + gr, s(photo_c[1]) + gr],
-               fill=hex_rgb(th["glow"]) + (150,))
-    glow = glow.filter(ImageFilter.GaussianBlur(s(45)))
-    img.paste(glow, (0, 0), glow)
-    d = ImageDraw.Draw(img, "RGBA")
-
-    # decorations
-    confetti(d, rng, th["confetti"], (photo_c[0], photo_c[1], photo_r + 40))
-    bunting(d, th["balloons"])
-    specs = [(0, 0, 66), (-62, 100, 58), (66, 108, 56)]
-    balloon_cluster(d, (140, 820), [(x, y - 250, r) for x, y, r in specs], th["balloons"])
-    balloon_cluster(d, (940, 820), [(x, y - 250, r) for x, y, r in specs], th["balloons"][::-1], mirror=True)
-    for (x, y, r) in [(300, 330, 20), (800, 345, 24), (250, 790, 16), (840, 800, 18), (960, 150, 14), (110, 160, 16)]:
-        sparkle(d, s(x), s(y), s(r), hex_rgb(th["accent"]) + (230,))
-
-    # heading
-    f_tag = get_font("sans", s(26))
-    spaced_text(d, s(540), s(128), "W I S H I N G   Y O U   A", f_tag, hex_rgb(th["accent"]) + (255,), s(2))
-    f_title, _ = fit_font(d, "Happy Birthday", "title", 128, 900)
-    d.text((s(540) + s(3), s(215) + s(4)), "Happy Birthday", font=f_title, fill=(0, 0, 0, 70), anchor="mm")
-    d.text((s(540), s(215)), "Happy Birthday", font=f_title, fill=hex_rgb(th["title"]), anchor="mm")
-
-    # photo with double ring
-    cx, cy, r = s(photo_c[0]), s(photo_c[1]), s(photo_r)
-    d.ellipse([cx - r - s(26), cy - r - s(26), cx + r + s(26), cy + r + s(26)], outline=hex_rgb(th["accent"]) + (255,), width=s(8))
-    d.ellipse([cx - r - s(10), cy - r - s(10), cx + r + s(10), cy + r + s(10)], fill=hex_rgb(th["ring"]) + (255,))
-    if photo_bytes:
-        pic = circular_photo(photo_bytes, r * 2, focus_y)
-        img.paste(pic, (cx - r, cy - r), pic)
-    else:
-        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=hex_rgb(th["accent"]) + (255,))
-        initial = (name.strip()[:1] or "★").upper()
-        d.text((cx, cy), initial, font=get_font(pick_role("title", initial), s(260)),
-               fill=hex_rgb(th["badge_text"]), anchor="mm")
-    d = ImageDraw.Draw(img, "RGBA")
-
-    # age badge
-    if show_age and age:
-        bx, by, br = s(photo_c[0] + 165), s(photo_c[1] + 170), s(66)
-        d.ellipse([bx - br - s(7), by - br - s(7), bx + br + s(7), by + br + s(7)], fill=hex_rgb(th["ring"]) + (255,))
-        d.ellipse([bx - br, by - br, bx + br, by + br], fill=hex_rgb(th["accent"]) + (255,))
-        d.text((bx, by - s(6)), str(age), font=get_font("sans", s(60 if age < 100 else 44)),
-               fill=hex_rgb(th["badge_text"]), anchor="mm")
-        d.text((bx, by + s(36)), "YEARS", font=get_font("sans", s(15)), fill=hex_rgb(th["badge_text"]), anchor="mm")
-
-    # name
-    name_txt = (name.strip() or "Your Name")
-    name_txt = name_txt.upper() if not has_devanagari(name_txt) else name_txt
-    f_name, _ = fit_font(d, name_txt, pick_role("name", name_txt), 104, 860)
-    d.text((s(540) + s(2), s(895) + s(3)), name_txt, font=f_name, fill=(0, 0, 0, 60), anchor="mm")
-    d.text((s(540), s(895)), name_txt, font=f_name, fill=hex_rgb(th["text"]), anchor="mm")
-
-    y = 965
-    if relation.strip():
-        f_rel = get_font(pick_role("sans", relation), s(28))
-        spaced_text(d, s(540), s(y), relation.strip().upper(), f_rel, hex_rgb(th["accent"]) + (255,), s(5))
-        y += 50
-
-    # divider
-    y += 8
-    d.line([(s(300), s(y)), (s(500), s(y))], fill=hex_rgb(th["accent"]) + (255,), width=s(3))
-    d.line([(s(580), s(y)), (s(780), s(y))], fill=hex_rgb(th["accent"]) + (255,), width=s(3))
-    sparkle(d, s(540), s(y), s(15), hex_rgb(th["accent"]) + (255,))
-    y += 55
-
-    # wish
-    wish = wish.strip() or WISHES["Classic"]
-    wrole = pick_role("body", wish)
-    size = 40
-    while size > 26:
-        f_w = get_font(wrole, s(size))
-        lines = wrap(d, wish, f_w, 800)
-        if len(lines) <= 5:
-            break
-        size -= 2
-    lh = size * 1.45
-    for i, line in enumerate(lines[:6]):
-        d.text((s(540), s(y + i * lh)), line, font=f_w, fill=hex_rgb(th["text"]) + (240,), anchor="mm")
-    y_end = y + len(lines[:6]) * lh
-
-    # sender
-    if sender.strip():
-        f_s = get_font(pick_role("name", sender), s(36))
-        d.text((s(540), s(max(y_end + 40, 1320))), f"With love, {sender.strip()}", font=f_s,
-               fill=hex_rgb(th["title"]), anchor="mm")
-
-    return img.resize((W, H), Image.Resampling.LANCZOS)
-
-
-def to_bytes(img, fmt="PNG"):
-    buf = io.BytesIO()
-    if fmt == "JPEG":
-        img.convert("RGB").save(buf, "JPEG", quality=95)
-    else:
-        img.save(buf, "PNG")
-    return buf.getvalue()
-
-
-# =====================================================================
-# 3. STREAMLIT UI
-# =====================================================================
-def main():
-    import streamlit as st
-
-    st.set_page_config(page_title="Birthday Card Studio", page_icon="🎂", layout="wide")
-
-    st.markdown("""
-        <style>
-        #MainMenu, footer {visibility: hidden;}
-        .block-container {padding-top: 1.6rem; max-width: 1150px;}
-        .hero {text-align:center; padding: 6px 0 18px 0;}
-        .hero h1 {font-size: 2.3rem; margin: 0; background: linear-gradient(90deg,#f472b6,#a78bfa,#fbbf24);
-                  -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;}
-        .hero p {color:#94a3b8; margin: 4px 0 0 0;}
-        .stDownloadButton button, .stLinkButton a {width:100%; border-radius: 12px; font-weight: 600;}
-        </style>
-        <div class="hero"><h1>🎂 Birthday Card Studio</h1>
-        <p>Photo, naam aur wish daalo — card turant ban jayega</p></div>
-    """, unsafe_allow_html=True)
-
-    if "seed" not in st.session_state:
-        st.session_state.seed = 7
-
-    form, preview = st.columns([1, 1.05], gap="large")
-
+def user_card_tab(user):
+    form, prev = st.columns([1, 1.05], gap="large")
     with form:
-        st.subheader("1️⃣  Kiske liye?")
-        name = st.text_input("Naam", "Sunita")
-        c1, c2 = st.columns(2)
-        age = c1.number_input("Umar", 1, 120, 22)
-        show_age = c2.checkbox("Card pe umar dikhao", True)
-        relation = st.text_input("Rishta (optional)", "Best Friend")
+        name, age, theme, wish, sender = theme_and_basics("card", user)
+        relation = st.text_input("Rishta (optional)", "Best Friend", key="card_rel")
+        show_age = st.checkbox("Card pe umar dikhao", True, key="card_showage")
+        photo = st.file_uploader("Photo (gol frame me auto-fit)", type=["jpg", "jpeg", "png", "webp"], key="card_photo")
+        focus = st.slider("Photo upar ↔ neeche", 0.0, 1.0, 0.4, 0.05, key="card_focus") if photo else 0.4
+        if st.button("🎊 Confetti naya karo", key="card_seed"):
+            st.session_state.seed = ss("seed", 7) + 1
 
-        st.subheader("2️⃣  Wish")
-        choice = st.selectbox("Wish chuno", list(WISHES.keys()))
-        if WISHES[choice]:
-            wish = st.text_area("Wish edit kar sakte ho", WISHES[choice], height=95)
-        else:
-            wish = st.text_area("Apni wish likho", "", height=95, placeholder="Yahan apna message likho…")
-        sender = st.text_input("Kisne bheja? (optional)", "")
+    @st.cache_data(show_spinner=False, max_entries=20)
+    def cached(*a):
+        return ce.to_bytes(ce.render_card(*a))
 
-        st.subheader("3️⃣  Style & Photo")
-        theme = st.radio("Theme", list(THEMES.keys()), horizontal=True, label_visibility="collapsed")
-        photo = st.file_uploader("Photo upload karo (gol frame me auto-fit hogi)", type=["jpg", "jpeg", "png", "webp"])
-        focus_y = 0.4
-        if photo:
-            focus_y = st.slider("Photo upar ↔ neeche adjust karo", 0.0, 1.0, 0.4, 0.05,
-                                help="Face frame me sahi na aaye to isse adjust karo")
-        if st.button("🎊 Confetti naya karo"):
-            st.session_state.seed += 1
-
-    @st.cache_data(show_spinner=False, max_entries=24)
-    def cached_render(*args):
-        return to_bytes(render_card(*args))
-
-    photo_bytes = photo.getvalue() if photo else None
-    png = cached_render(theme, name, int(age), show_age, relation, wish, sender,
-                        photo_bytes, focus_y, st.session_state.seed)
-
-    with preview:
+    png = cached(theme, name, age, show_age, relation, wish, sender, photo.getvalue() if photo else None,
+                 focus, ss("seed", 7))
+    with prev:
         st.image(png, use_container_width=True)
-        safe = re.sub(r"[^\w\-]+", "_", name.strip() or "card")
-        d1, d2 = st.columns(2)
-        d1.download_button("⬇️ PNG download (HD)", png, f"{safe}_birthday_card.png", "image/png")
-        jpg = to_bytes(Image.open(io.BytesIO(png)), "JPEG")
-        d2.download_button("⬇️ JPG (chhoti file)", jpg, f"{safe}_birthday_card.jpg", "image/jpeg")
+        sn = safe_name(name, "card")
+        a, b = st.columns(2)
+        a.download_button("⬇️ PNG (HD)", png, f"{sn}_birthday_card.png", "image/png", key="card_dl_png")
+        jpg = ce.to_bytes(Image.open(io.BytesIO(png)), "JPEG")
+        b.download_button("⬇️ JPG (chhoti)", jpg, f"{sn}_birthday_card.jpg", "image/jpeg", key="card_dl_jpg")
+        if st.button("💾 Meri Gallery me save karo", use_container_width=True, key="card_save"):
+            db.save_creation(user["id"], "card", f"{name} - Card", png, "png")
+            st.success("Gallery me save ho gaya ✅")
         msg = f"Happy Birthday {name.strip()}! 🎂🎉 Ye card sirf tumhare liye ❤️"
         st.link_button("📲 WhatsApp pe bhejo", "https://wa.me/?text=" + urllib.parse.quote(msg))
-        st.caption("Pehle card download karo, phir WhatsApp me attach karke bhej do.")
 
 
-if __name__ == "__main__":
-    main()
+def user_album_tab(user):
+    st.caption("Kai photos daalo — khoobsurat polaroid pages wala Birthday Album + PDF ban jayega.")
+    form, prev = st.columns([1, 1.2], gap="large")
+    with form:
+        name, age, theme, wish, sender = theme_and_basics("alb", user)
+        files = st.file_uploader("Photos (2 se 40)", type=["jpg", "jpeg", "png", "webp"],
+                                 accept_multiple_files=True, key="alb_files")
+        caps = st.text_area("Photo ke neeche likhna ho to (har line = ek photo, optional)", height=80, key="alb_caps")
+        go = st.button("📖 Album banao", type="primary", use_container_width=True, key="alb_go",
+                       disabled=not files)
+        if go:
+            if len(files) > 40:
+                st.warning("Pehli 40 photos hi li gayi.")
+            bar = st.progress(0.0, "Shuru...")
+            pages = media.render_album(theme, name, age, [f.getvalue() for f in files[:40]], wish, sender,
+                                       split_lines(caps), progress=lambda p, m: bar.progress(min(p, 1.0), m))
+            bar.empty()
+            st.session_state.album = dict(pages=pages, pdf=media.pages_to_pdf(pages), name=name)
+    with prev:
+        res = ss("album")
+        if not res:
+            st.info("Photos daalo aur 'Album banao' dabao. Yahan preview dikhega.")
+            return
+        pdf, pages, nm = res["pdf"], res["pages"], res["name"]
+        a, b = st.columns(2)
+        a.download_button("⬇️ Album PDF", pdf, f"{safe_name(nm)}_album.pdf", "application/pdf", key="alb_dl_pdf")
+        zbuf = io.BytesIO()
+        with zipfile.ZipFile(zbuf, "w") as z:
+            for i, p in enumerate(pages, 1):
+                pb = io.BytesIO()
+                p.save(pb, "JPEG", quality=92)
+                z.writestr(f"page_{i:02d}.jpg", pb.getvalue())
+        b.download_button("⬇️ Sab pages (ZIP)", zbuf.getvalue(), f"{safe_name(nm)}_album_pages.zip",
+                          "application/zip", key="alb_dl_zip")
+        if st.button("💾 Meri Gallery me save karo", use_container_width=True, key="alb_save"):
+            cover = io.BytesIO()
+            pages[0].save(cover, "JPEG", quality=88)
+            db.save_creation(user["id"], "album", f"{nm} - Album ({len(pages)} pages)", cover.getvalue(), "jpg",
+                             pdf, "pdf")
+            st.success("Gallery me save ho gaya ✅")
+        cols = st.columns(2)
+        for i, p in enumerate(pages):
+            cols[i % 2].image(p, caption=("Cover" if i == 0 else f"Page {i + 1}"), use_container_width=True)
+
+
+def user_video_tab(user):
+    st.caption("Photos se vertical (WhatsApp Status / Reels size) Birthday Video — animation, transitions aur music ke saath.")
+    form, prev = st.columns([1, 1], gap="large")
+    with form:
+        name, age, theme, wish, sender = theme_and_basics("vid", user)
+        files = st.file_uploader("Photos (1 se 15)", type=["jpg", "jpeg", "png", "webp"],
+                                 accept_multiple_files=True, key="vid_files")
+        caps = st.text_area("Har photo par likhna ho to (har line = ek photo, optional)", height=80, key="vid_caps")
+        secs = st.slider("Ek photo kitni der (seconds)", 2.0, 6.0, 3.2, 0.2, key="vid_secs")
+        mus = st.radio("Music", ["🎵 Built-in khushi wali dhun", "📁 Apna MP3/audio", "🔇 Bina music"], key="vid_mus")
+        audio = st.file_uploader("Audio file", type=["mp3", "wav", "m4a", "aac"], key="vid_audio") \
+            if mus.startswith("📁") else None
+        est = 4.2 + 5.5 + max(1, len(files) if files else 1) * (secs - 0.7)
+        st.caption(f"Video lagbhag {est:.0f} second ki banegi. Render me {max(1, int(est / 3))}-{max(2, int(est / 1.5))} second lag sakte hain.")
+        go = st.button("🎬 Video banao", type="primary", use_container_width=True, key="vid_go", disabled=not files)
+        if go:
+            if len(files) > 15:
+                st.warning("Pehli 15 photos hi li gayi.")
+            bar = st.progress(0.0, "Shuru...")
+            music = "builtin" if mus.startswith("🎵") else ("upload" if audio else "none")
+            data = media.render_video(theme, name, age, [f.getvalue() for f in files[:15]], wish, sender,
+                                      split_lines(caps), secs, music, audio.getvalue() if audio else None,
+                                      progress=lambda p, m: bar.progress(min(p, 1.0), m))
+            bar.empty()
+            st.session_state.video = dict(data=data, name=name)
+    with prev:
+        res = ss("video")
+        if not res:
+            st.info("Photos daalo aur 'Video banao' dabao. Video yahan chalega.")
+            return
+        st.video(res["data"])
+        st.download_button("⬇️ Video download (MP4)", res["data"], f"{safe_name(res['name'])}_birthday_video.mp4",
+                           "video/mp4", key="vid_dl")
+        if st.button("💾 Meri Gallery me save karo", use_container_width=True, key="vid_save"):
+            db.save_creation(user["id"], "video", f"{res['name']} - Video", res["data"], "mp4")
+            st.success("Gallery me save ho gaya ✅")
+        st.caption("WhatsApp: download karke Status ya chat me attach kar do.")
+
+
+def gallery_view(items, can_delete_uid=None, key_prefix="g"):
+    if not items:
+        st.info("Abhi kuch nahi hai.")
+        return
+    icon = {"card": "🎂 Card", "album": "📖 Album", "video": "🎬 Video"}
+    cols = st.columns(3)
+    for i, it in enumerate(items):
+        with cols[i % 3]:
+            st.markdown('<div class="card-box">', unsafe_allow_html=True)
+            st.markdown(f"**{icon[it['kind']]}** — {it['title']}")
+            st.caption(f"{it.get('username', '')} · {it['created_at']}")
+            data = db.read_file(it["path"])
+            if it["kind"] == "video":
+                st.video(data)
+                st.download_button("⬇️ Video", data, f"video_{it['id']}.mp4", "video/mp4", key=f"{key_prefix}_dl{it['id']}")
+            elif it["kind"] == "album":
+                st.image(data, use_container_width=True)
+                st.download_button("⬇️ PDF", db.read_file(it["extra_path"]), f"album_{it['id']}.pdf",
+                                   "application/pdf", key=f"{key_prefix}_dl{it['id']}")
+            else:
+                st.image(data, use_container_width=True)
+                st.download_button("⬇️ PNG", data, f"card_{it['id']}.png", "image/png", key=f"{key_prefix}_dl{it['id']}")
+            if can_delete_uid is not None or key_prefix.startswith("adm"):
+                if st.button("🗑️ Delete", key=f"{key_prefix}_del{it['id']}"):
+                    db.delete_creation(it["id"], can_delete_uid)
+                    st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+
+def user_profile_tab(user):
+    st.subheader("Meri jankari")
+    with st.form("prof"):
+        c1, c2 = st.columns(2)
+        fn = c1.text_input("Poora naam", user["full_name"])
+        ph = c2.text_input("Mobile", user["phone"])
+        c3, c4 = st.columns(2)
+        em = c3.text_input("Email", user["email"])
+        city = c4.text_input("Sheher", user["city"])
+        try:
+            dv = date.fromisoformat(user["dob"]) if user["dob"] else date(2000, 1, 1)
+        except ValueError:
+            dv = date(2000, 1, 1)
+        dob = st.date_input("Janamdin", dv, min_value=date(1920, 1, 1), max_value=date.today())
+        go = st.form_submit_button("Save karo", type="primary")
+    if go:
+        db.update_profile(user["id"], fn.strip(), ph.strip(), em.strip(), city.strip(), dob.isoformat())
+        st.session_state.user = db.get_user(user["id"])
+        st.success("Jankari update ho gayi ✅")
+        st.rerun()
+    mine = db.list_creations(user["id"])
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Cards", sum(m["kind"] == "card" for m in mine))
+    c2.metric("Albums", sum(m["kind"] == "album" for m in mine))
+    c3.metric("Videos", sum(m["kind"] == "video" for m in mine))
+
+
+def user_panel(user):
+    hero(f"Namaste {user['full_name'] or user['username']}! Aaj kya banana hai?")
+    t0, t1, t2, t3, t4 = st.tabs(["🎂 Card", "📖 Album", "🎬 Video", "🗂️ Meri Gallery", "👤 Profile"])
+    with t0:
+        user_card_tab(user)
+    with t1:
+        user_album_tab(user)
+    with t2:
+        user_video_tab(user)
+    with t3:
+        kind = st.radio("Dikhao", ["Sab", "card", "album", "video"], horizontal=True, key="gal_kind")
+        gallery_view(db.list_creations(user["id"], None if kind == "Sab" else kind), can_delete_uid=user["id"], key_prefix="ug")
+    with t4:
+        user_profile_tab(user)
+
+
+# ---------------------------------------------------------------- ADMIN
+def users_frame(users):
+    rows = [{
+        "ID": u["id"], "Username": u["username"], "Naam": u["full_name"], "Mobile": u["phone"],
+        "Email": u["email"], "Sheher": u["city"], "Janamdin": u["dob"],
+        "Cards": u["cards"], "Albums": u["albums"], "Videos": u["videos"],
+        "Status": "Active" if u["active"] else "Band", "Bana": u["created_at"], "Last login": u["last_login"],
+    } for u in users]
+    return pd.DataFrame(rows)
+
+
+def admin_dashboard():
+    s = db.stats()
+    c = st.columns(5)
+    c[0].metric("Total Users", s["users"])
+    c[1].metric("Active", s["active"])
+    c[2].metric("Cards", s["cards"])
+    c[3].metric("Albums", s["albums"])
+    c[4].metric("Videos", s["videos"])
+    st.subheader("Naye users")
+    df = users_frame(db.list_users())
+    if df.empty:
+        st.info("Abhi koi user nahi hai.")
+    else:
+        st.dataframe(df.head(8), use_container_width=True, hide_index=True)
+
+
+def admin_users():
+    users = db.list_users()
+    q = st.text_input("🔎 Search (naam / username / mobile / sheher)", key="adm_q")
+    if q:
+        ql = q.lower()
+        users = [u for u in users if ql in " ".join(str(u[k]) for k in ("username", "full_name", "phone", "email", "city")).lower()]
+    df = users_frame(users)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+    if not df.empty:
+        st.download_button("⬇️ Users list (CSV/Excel me khulega)", df.to_csv(index=False).encode("utf-8-sig"),
+                           "users.csv", "text/csv", key="adm_csv")
+
+
+def admin_user_detail():
+    users = db.list_users()
+    if not users:
+        st.info("Abhi koi user nahi hai.")
+        return
+    opts = {f"{u['full_name'] or '-'}  (@{u['username']})": u["id"] for u in users}
+    pick = st.selectbox("User chuno", list(opts.keys()), key="adm_pick")
+    u = db.get_user(opts[pick])
+    left, right = st.columns([1, 1.4], gap="large")
+    with left:
+        st.markdown(f"#### {u['full_name'] or u['username']}")
+        st.write(f"**Username:** {u['username']}")
+        st.write(f"**Mobile:** {u['phone'] or '-'}")
+        st.write(f"**Email:** {u['email'] or '-'}")
+        st.write(f"**Sheher:** {u['city'] or '-'}")
+        st.write(f"**Janamdin:** {u['dob'] or '-'}")
+        st.write(f"**Account bana:** {u['created_at']}")
+        st.write(f"**Last login:** {u['last_login'] or '-'}")
+        st.write(f"**Status:** {'🟢 Active' if u['active'] else '🔴 Band'}")
+        if u["active"]:
+            if st.button("🚫 ID band karo", key="adm_off"):
+                db.set_active(u["id"], False)
+                st.rerun()
+        else:
+            if st.button("✅ ID chalu karo", key="adm_on"):
+                db.set_active(u["id"], True)
+                st.rerun()
+        with st.expander("🔑 Password reset"):
+            npw = st.text_input("Naya password", type="password", key="adm_npw")
+            if st.button("Reset karo", key="adm_reset"):
+                ok, msg = db.set_password(u["id"], npw)
+                (st.success if ok else st.error)(msg)
+        with st.expander("🗑️ User delete karo (wapas nahi aayega)"):
+            sure = st.checkbox("Haan, is user aur uski sari files delete karo", key="adm_sure")
+            if st.button("Delete", disabled=not sure, key="adm_delu"):
+                db.delete_user(u["id"])
+                st.rerun()
+    with right:
+        st.markdown("#### Is user ki banayi cheezein")
+        gallery_view(db.list_creations(u["id"]), key_prefix="adm_u")
+
+
+def admin_all_creations():
+    kind = st.radio("Dikhao", ["Sab", "card", "album", "video"], horizontal=True, key="adm_kind")
+    gallery_view(db.list_creations(None, None if kind == "Sab" else kind)[:60], key_prefix="adm_all")
+    st.caption("Sabse naye 60 dikhaye gaye.")
+
+
+def admin_add_user():
+    with st.form("adm_add", clear_on_submit=True):
+        c1, c2 = st.columns(2)
+        u = c1.text_input("Username *")
+        p = c2.text_input("Password * (min 6)", type="password")
+        fn = st.text_input("Poora naam *")
+        c3, c4, c5 = st.columns(3)
+        ph = c3.text_input("Mobile")
+        em = c4.text_input("Email")
+        city = c5.text_input("Sheher")
+        go = st.form_submit_button("User banao", type="primary")
+    if go:
+        if not fn.strip():
+            st.error("Naam zaroori hai.")
+        else:
+            ok, msg = db.register(u, p, fn, ph, em, city, "")
+            (st.success if ok else st.error)(msg)
+
+
+def admin_panel(user):
+    hero("Admin Panel — poora control aapke haath me")
+    if db.check_pw(db.DEFAULT_ADMIN_PASS, db.get_user(user["id"])["password"]):
+        st.warning("⚠️ Abhi default password (admin123) chal raha hai. Sidebar me '🔑 Password badlo' se turant badlo.")
+    t = st.tabs(["📊 Dashboard", "👥 Sare Users", "🔍 User ki detail", "🗂️ Sab creations", "➕ User jodo"])
+    with t[0]:
+        admin_dashboard()
+    with t[1]:
+        admin_users()
+    with t[2]:
+        admin_user_detail()
+    with t[3]:
+        admin_all_creations()
+    with t[4]:
+        admin_add_user()
+
+
+# ---------------------------------------------------------------- ROUTER
+def main():
+    user = ss("user")
+    if not user:
+        auth_page()
+        return
+    fresh = db.get_user(user["id"])
+    if not fresh or not fresh["active"]:
+        st.session_state.clear()
+        st.error("Ye ID ab chalu nahi hai.")
+        st.rerun()
+    st.session_state.user = user = fresh
+    sidebar(user)
+    (admin_panel if user["role"] == "admin" else user_panel)(user)
+
+
+main()
