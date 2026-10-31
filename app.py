@@ -1353,8 +1353,7 @@ def page_gallery(user):
     render_gallery(user_creations(user["id"], None if f == "all" else f), "ug")
 
 
-def page_profile(user):
-    page_header("👤 Mera Profile", "Apni jankari aur password yahan badlo")
+def profile_form(user):
     cur = get_profile_photo(user["id"])
     pc1, pc2 = st.columns([1, 4])
     with pc1:
@@ -1383,11 +1382,16 @@ def page_profile(user):
                 remove_profile_photo(user["id"])
             st.success("Profile update ho gaya ✅")
             st.rerun()
+
+
+def page_profile(user):
+    page_header("👤 Mera Profile", "Apni jankari, photo aur password yahan badlo")
+    profile_form(user)
     password_form(user, "u")
 
 
-def password_form(user, key):
-    with st.expander("🔒 Password badlo"):
+def password_form(user, key, expanded=False):
+    with st.expander("🔒 Password badlo", expanded=expanded):
         with st.form(f"pw_{key}"):
             old = st.text_input("Purana password", type="password")
             new = st.text_input("Naya password (min 6)", type="password")
@@ -1597,18 +1601,25 @@ def admin_new_user():
 
 
 def admin_settings(user):
-    page_header("⚙️ Settings", "Password aur storage ki jankari")
-    if check_pw("admin123", user["pw_hash"], user["salt"]):
-        st.warning("⚠️ Aap abhi default password (admin123) use kar rahe ho. Neeche se turant badlo.")
-    password_form(user, "a")
-    st.caption(f"Database: `{DB_PATH}` · Files: `{FILES_DIR}`  — inka backup lete raho.")
+    page_header("⚙️ Settings & Profile", "Apni admin profile, password aur storage yahan sambhalo")
+    t1, t2, t3 = st.tabs(["👤 Meri Profile", "🔒 Password", "💾 Storage"])
+    with t1:
+        profile_form(user)
+    with t2:
+        if check_pw("admin123", user["pw_hash"], user["salt"]):
+            st.warning("⚠️ Aap abhi default password (admin123) use kar rahe ho. Neeche se turant badlo.")
+        password_form(user, "a", expanded=True)
+    with t3:
+        st.caption(f"Database: `{DB_PATH}`")
+        st.caption(f"Files: `{FILES_DIR}`")
+        st.caption("Inka backup lete raho.")
 
 
 def admin_panel(user):
     pages = {"📊 Dashboard": admin_dashboard, "👥 Users": admin_users, "🖼️ Sab Creations": admin_creations,
              "➕ Naya user": admin_new_user}
-    choice = st.sidebar.radio("Admin menu", list(pages) + ["⚙️ Settings"], key="nav_admin")
-    if choice == "⚙️ Settings":
+    choice = st.sidebar.radio("Admin menu", list(pages) + ["⚙️ Settings & Profile"], key="nav_admin")
+    if choice == "⚙️ Settings & Profile":
         admin_settings(user)
     else:
         pages[choice]()
