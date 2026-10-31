@@ -1062,8 +1062,54 @@ def delete_creation(cid):
 
 def delete_user(uid):
     shutil.rmtree(FILES_DIR / str(uid), ignore_errors=True)
+    remove_profile_photo(uid)
     q("DELETE FROM creations WHERE user_id=?", (uid,), commit=True)
     q("DELETE FROM users WHERE id=?", (uid,), commit=True)
+
+
+# ---------- profile photo ----------
+def profile_path(uid):
+    return FILES_DIR / "profiles" / f"{uid}.jpg"
+
+
+def set_profile_photo(uid, data):
+    try:
+        img = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
+    except Exception:
+        return False
+    img = ImageOps.fit(img, (512, 512), Image.Resampling.LANCZOS, centering=(0.5, 0.4))
+    p = profile_path(uid)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    img.save(p, "JPEG", quality=92)
+    return True
+
+
+def get_profile_photo(uid):
+    p = profile_path(uid)
+    return p.read_bytes() if p.exists() else None
+
+
+def remove_profile_photo(uid):
+    try:
+        profile_path(uid).unlink()
+    except OSError:
+        pass
+
+
+def photo_uri(uid, size=96):
+    data = get_profile_photo(uid)
+    if not data:
+        return None
+    import base64
+    im = Image.open(io.BytesIO(data)).resize((size, size), Image.Resampling.LANCZOS)
+    return "data:image/jpeg;base64," + base64.b64encode(to_bytes(im, "JPEG")).decode()
+
+
+def avatar_html(user):
+    uri = photo_uri(user["id"], 96)
+    if uri:
+        return f'<div class="avatar"><img src="{uri}"></div>'
+    return f'<div class="avatar">{(user["full_name"] or user["username"])[:1].upper()}</div>'
 
 
 MIME = {"png": "image/png", "jpg": "image/jpeg", "pdf": "application/pdf", "mp4": "video/mp4", "zip": "application/zip"}
@@ -1159,8 +1205,10 @@ def page_card(user):
         sender = st.text_input("Kisne bheja? (optional)", user["full_name"] or "", key="c_sender")
         theme = st.radio("Theme", list(THEMES.keys()), horizontal=True, key="c_theme")
         photo = st.file_uploader("Photo (gol frame me auto-fit)", type=["jpg", "jpeg", "png", "webp"], key="c_photo")
+        prof = get_profile_photo(user["id"])
+        use_prof = bool(prof) and not photo and st.checkbox("📸 Meri profile photo use karo", True, key="c_useprof")
         focus_y = 0.4
-        if photo:
+        if photo or use_prof:
             focus_y = st.slider("Photo upar ↔ neeche", 0.0, 1.0, 0.4, 0.05, key="c_focus")
         if st.button("🎊 Confetti naya karo", key="c_conf"):
             st.session_state.seed += 1
@@ -1169,7 +1217,7 @@ def page_card(user):
     def cached_render(*args):
         return to_bytes(render_card(*args))
 
-    photo_bytes = photo.getvalue() if photo else None
+    photo_bytes = photo.getvalue() if photo else (prof if use_prof else None)
     png = cached_render(theme, name, int(age), show_age, relation, wish, sender, photo_bytes, focus_y,
                         st.session_state.seed)
     with preview:
@@ -1205,19 +1253,24 @@ def page_album(user):
         sender = st.text_input("Kisne bheja?", user["full_name"] or "", key="a_sender")
         files = st.file_uploader("Photos (1 se 24)", type=["jpg", "jpeg", "png", "webp"], accept_multiple_files=True,
                                  key="a_files")
+    prof = get_profile_photo(user["id"])
+    inc = bool(prof) and st.checkbox("📸 Meri profile photo bhi shamil karo (pehli photo)", True, key="a_incprof")
     caps = photo_captions_box(24, "a_caps")
     if files and len(files) > 24:
         st.warning("Sirf pehli 24 photos li jayengi.")
-        files = files[:24]
-    if st.button("📖 Album banao", type="primary", disabled=not files, key="a_go"):
+    blobs = ([prof] if inc else []) + [f.getvalue() for f in (files or [])]
+    blobs = blobs[:24]
+    if inc:
+        caps = [""] + caps
+    if st.button("📖 Album banao", type="primary", disabled=not blobs, key="a_go"):
         with st.spinner("Album ban raha hai…"):
             pages = build_album(theme, title.strip() or "Happy Birthday", name, int(age), show_age, wish, sender,
-                                [f.getvalue() for f in files], caps, per_page)
+                                blobs, caps, per_page)
             pdf = pages_to_pdf(pages)
             safe = re.sub(r"[^\w\-]+", "_", name.strip() or "album")
             st.session_state["album_res"] = dict(pages=[to_bytes(p) for p in pages], pdf=pdf,
                                                  zip=pages_to_zip(pages, safe), safe=safe)
-            save_creation(user["id"], "album", f"{name.strip() or 'Album'} ({len(files)} photos)", pdf, "pdf",
+            save_creation(user["id"], "album", f"{name.strip() or 'Album'} ({len(blobs)} photos)", pdf, "pdf",
                           thumb_bytes=to_bytes(pages[0], "JPEG"))
         st.success("Album ban gaya aur gallery me save ho gaya ✅")
     res = st.session_state.get("album_res")
@@ -1256,23 +1309,28 @@ def page_video(user):
             music_bytes = m.getvalue() if m else None
         files = st.file_uploader("Photos (1 se 12)", type=["jpg", "jpeg", "png", "webp"], accept_multiple_files=True,
                                  key="v_files")
+    prof = get_profile_photo(user["id"])
+    inc = bool(prof) and st.checkbox("📸 Meri profile photo bhi shamil karo (pehli photo)", True, key="v_incprof")
     caps = photo_captions_box(12, "v_caps")
     if files and len(files) > 12:
         st.warning("Sirf pehli 12 photos li jayengi.")
-        files = files[:12]
-    if files:
-        est = 4 + len(files) * (per_photo - 0.6) + 5.5 - 0.6
+    blobs = ([prof] if inc else []) + [f.getvalue() for f in (files or [])]
+    blobs = blobs[:12]
+    if inc:
+        caps = [""] + caps
+    if blobs:
+        est = 4 + len(blobs) * (per_photo - 0.6) + 5.5 - 0.6
         st.caption(f"Video lagbhag **{est:.0f} second** ka banega. Banane me 30-90 second lag sakte hain.")
-    if st.button("🎬 Video banao", type="primary", disabled=not files, key="v_go"):
+    if st.button("🎬 Video banao", type="primary", disabled=not blobs, key="v_go"):
         bar = st.progress(0.0, text="Video ban raha hai…")
         try:
             mp4, thumb = build_video(theme, name, int(age), show_age, relation, wish, sender,
-                                     [f.getvalue() for f in files], caps, per_photo,
+                                     blobs, caps, per_photo,
                                      music=music, music_bytes=music_bytes,
                                      progress=lambda p: bar.progress(p, text="Video ban raha hai…"))
             safe = re.sub(r"[^\w\-]+", "_", name.strip() or "video")
             st.session_state["video_res"] = dict(mp4=mp4, safe=safe)
-            save_creation(user["id"], "video", f"{name.strip() or 'Video'} ({len(files)} photos)", mp4, "mp4",
+            save_creation(user["id"], "video", f"{name.strip() or 'Video'} ({len(blobs)} photos)", mp4, "mp4",
                           thumb_bytes=thumb)
             bar.empty()
             st.success("Video ban gaya aur gallery me save ho gaya ✅")
@@ -1297,7 +1355,16 @@ def page_gallery(user):
 
 def page_profile(user):
     page_header("👤 Mera Profile", "Apni jankari aur password yahan badlo")
+    cur = get_profile_photo(user["id"])
+    pc1, pc2 = st.columns([1, 4])
+    with pc1:
+        if cur:
+            st.image(cur, width=130)
+        else:
+            st.caption("Abhi koi profile photo nahi hai.")
     with st.form("prof"):
+        newphoto = st.file_uploader("📸 Profile photo upload / badlo", type=["jpg", "jpeg", "png", "webp"], key="pf_photo")
+        delphoto = st.checkbox("Photo hata do", False) if cur else False
         name = st.text_input("Poora naam", user["full_name"] or "")
         try:
             dv = date.fromisoformat(user["dob"])
@@ -1309,6 +1376,11 @@ def page_profile(user):
         if st.form_submit_button("Save"):
             q("UPDATE users SET full_name=?, dob=?, phone=?, email=? WHERE id=?",
               (name.strip() or user["full_name"], dob.isoformat(), phone.strip(), email.strip(), user["id"]), commit=True)
+            if newphoto:
+                if not set_profile_photo(user["id"], newphoto.getvalue()):
+                    st.error("Ye photo khul nahi payi, doosri try karo.")
+            elif delphoto:
+                remove_profile_photo(user["id"])
             st.success("Profile update ho gaya ✅")
             st.rerun()
     password_form(user, "u")
@@ -1339,8 +1411,10 @@ def page_home(user):
     elif dl is not None:
         count = f'<div class="count"><b>{dl}</b><span>din baaki aapke birthday me 🎂</span></div>'
     else:
-        count = '<div class="count"><span>Profile me janamdin daalo — umar auto-fill ho jayegi</span></div>'
-    st.markdown(f'<div class="hero-big"><h1>Namaste, {first}! 👋</h1>'
+        count = '<div class="count"><span>Profile me janamdin aur photo daalo — card/video me auto-use hongi</span></div>'
+    uri = photo_uri(user["id"], 160)
+    av = f'<img class="hero-av" src="{uri}">' if uri else ""
+    st.markdown(f'<div class="hero-big">{av}<h1>Namaste, {first}! 👋</h1>'
                 f'<p>Aaj kya banayein? Card, Album ya Video — sab yahin.</p>{count}</div>', unsafe_allow_html=True)
     feature_cards([("🎴", "Birthday Card", "Gol photo, balloons aur wish ke saath HD card. Left menu se 'Birthday Card' kholo."),
                    ("📖", "Birthday Album", "Polaroid pages ka poora album — PDF me download karo."),
@@ -1371,7 +1445,7 @@ def admin_users_rows():
 def users_table(rows):
     out = []
     for r in rows:
-        out.append({"ID": r["id"], "Naam": r["full_name"], "Username": r["username"], "Role": r["role"],
+        out.append({"Photo": photo_uri(r["id"], 64), "ID": r["id"], "Naam": r["full_name"], "Username": r["username"], "Role": r["role"],
                     "Janamdin": r["dob"], "Umar": calc_age(r["dob"]), "Phone": r["phone"], "Email": r["email"],
                     "Joined": (r["created_at"] or "")[:10], "Last login": (r["last_login"] or "")[:16].replace("T", " "),
                     "Active": "Haan" if r["active"] else "Nahi",
@@ -1412,12 +1486,14 @@ def admin_users():
     if search:
         rows = [r for r in rows if search in " ".join(str(r[k] or "") for k in ("full_name", "username", "phone", "email")).lower()]
     table = users_table(rows)
-    st.dataframe(table, use_container_width=True, hide_index=True)
+    st.dataframe(table, use_container_width=True, hide_index=True,
+                 column_config={"Photo": st.column_config.ImageColumn("Photo", width="small")})
     if table:
         buf = io.StringIO()
-        w = csv.DictWriter(buf, fieldnames=list(table[0].keys()))
+        plain = [{k: v for k, v in r.items() if k != "Photo"} for r in table]
+        w = csv.DictWriter(buf, fieldnames=list(plain[0].keys()))
         w.writeheader()
-        w.writerows(table)
+        w.writerows(plain)
         st.download_button("⬇️ CSV export", buf.getvalue().encode("utf-8-sig"), "users.csv", "text/csv", key="adm_csv")
 
     st.divider()
@@ -1428,6 +1504,13 @@ def admin_users():
     sel = st.selectbox("User chuno", list(opts), key="adm_sel")
     u = get_user(opts[sel])
     me = st.session_state.get("uid")
+    pimg = get_profile_photo(u["id"])
+    if pimg:
+        pc1, pc2 = st.columns([1, 6])
+        pc1.image(pimg, width=110)
+        if pc2.button("🗑️ Is user ki profile photo hatao", key=f"adm_rmph_{u['id']}"):
+            remove_profile_photo(u["id"])
+            st.rerun()
     with st.form(f"adm_edit_{u['id']}"):
         c1, c2 = st.columns(2)
         name = c1.text_input("Naam", u["full_name"] or "")
@@ -1504,8 +1587,12 @@ def admin_new_user():
         dob = c1.date_input("Janamdin", date(2000, 1, 1), min_value=date(1920, 1, 1), max_value=date.today())
         phone = c2.text_input("Phone")
         email = c1.text_input("Email")
+        nphoto = c2.file_uploader("📸 Profile photo (optional)", type=["jpg", "jpeg", "png", "webp"], key="adm_nphoto")
         if st.form_submit_button("Banao"):
             ok, msg = create_user(uname, pw, name, dob.isoformat(), phone, email, role)
+            if ok and nphoto:
+                new = q("SELECT id FROM users WHERE username=?", (uname.strip().lower(),), one=True)
+                set_profile_photo(new["id"], nphoto.getvalue())
             (st.success if ok else st.error)(msg)
 
 
@@ -1555,6 +1642,9 @@ section[data-testid="stSidebar"] .stRadio label:hover{background:rgba(255,255,25
 .me{display:flex;gap:.7rem;align-items:center;padding:.7rem;border-radius:16px;background:var(--card);border:1px solid var(--line);}
 .avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;
         background:linear-gradient(135deg,#f472b6,#a78bfa);color:#fff;font-size:1.05rem;flex:none;}
+.avatar{overflow:hidden}.avatar img{width:100%;height:100%;object-fit:cover}
+.hero-av{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid #fff;float:left;margin-right:1.2rem;
+         box-shadow:0 8px 24px -8px rgba(0,0,0,.6)}
 .me b{display:block;line-height:1.15}.me span.u{color:var(--mute);font-size:.78rem}
 .role-chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.66rem;font-weight:700;margin-left:6px;
            background:linear-gradient(90deg,#a78bfa,#f472b6);color:#fff;vertical-align:middle;}
@@ -1670,6 +1760,8 @@ def auth_page():
                 dob = st.date_input("Janamdin", date(2000, 1, 1), min_value=date(1920, 1, 1), max_value=date.today())
                 phone = st.text_input("Phone (optional)")
                 email = st.text_input("Email (optional)")
+                sphoto = st.file_uploader("📸 Profile photo (card, album, video me kaam aayegi)",
+                                          type=["jpg", "jpeg", "png", "webp"], key="su_photo")
                 if st.form_submit_button("Account banao", use_container_width=True, type="primary"):
                     if pw != pw2:
                         st.error("Dono password same nahi hain.")
@@ -1677,6 +1769,8 @@ def auth_page():
                         ok, msg = create_user(uname, pw, name, dob.isoformat(), phone, email, "user")
                         if ok:
                             row, _ = authenticate(uname, pw)
+                            if sphoto:
+                                set_profile_photo(row["id"], sphoto.getvalue())
                             st.session_state["uid"] = row["id"]
                             st.rerun()
                         else:
@@ -1710,9 +1804,8 @@ def main():
         return
     with st.sidebar:
         st.markdown('<div class="brand">🎂 Birthday Studio</div>', unsafe_allow_html=True)
-        ini = (user["full_name"] or user["username"])[:1].upper()
         chip = "ADMIN" if user["role"] == "admin" else "USER"
-        st.markdown(f'<div class="me"><div class="avatar">{ini}</div><div><b>{user["full_name"]}'
+        st.markdown(f'<div class="me">{avatar_html(user)}<div><b>{user["full_name"]}'
                     f'<span class="role-chip">{chip}</span></b><span class="u">@{user["username"]}</span></div></div>',
                     unsafe_allow_html=True)
         st.write("")
