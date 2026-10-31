@@ -1110,6 +1110,22 @@ def user_creations(uid, kind=None):
     return q(sql + " ORDER BY id DESC", tuple(args))
 
 
+
+def page_header(title, sub=""):
+    st.markdown(f'<div class="ph"><h2>{title}</h2><p>{sub}</p></div>', unsafe_allow_html=True)
+
+
+def stat_cards(items, cls="g3"):
+    html = "".join(f'<div class="stat"><div class="ic">{ic}</div><div class="v">{v}</div><div class="l">{lb}</div></div>'
+                   for ic, lb, v in items)
+    st.markdown(f'<div class="grid {cls}">{html}</div>', unsafe_allow_html=True)
+
+
+def feature_cards(items):
+    html = "".join(f'<div class="feat"><div class="ic">{ic}</div><h4>{t}</h4><p>{d}</p></div>' for ic, t, d in items)
+    st.markdown(f'<div class="grid g3">{html}</div>', unsafe_allow_html=True)
+
+
 # =====================================================================
 # 6. USER PANEL
 # =====================================================================
@@ -1124,7 +1140,7 @@ def prefill(user):
 
 
 def page_card(user):
-    st.subheader("🎴 Birthday Card")
+    page_header("🎴 Birthday Card", "Photo, naam aur wish daalo — HD card turant tayyar")
     name0, age0 = prefill(user)
     form, preview = st.columns([1, 1.05], gap="large")
     if "seed" not in st.session_state:
@@ -1172,7 +1188,7 @@ def page_card(user):
 
 
 def page_album(user):
-    st.subheader("📖 Birthday Album")
+    page_header("📖 Birthday Album", "Photos se polaroid-style album — PDF aur PNG dono me")
     st.caption("Photos daalo — cover, polaroid pages aur last wish page wala poora album ban jayega (PDF + PNG).")
     name0, age0 = prefill(user)
     c1, c2 = st.columns([1, 1], gap="large")
@@ -1217,7 +1233,7 @@ def page_album(user):
 
 
 def page_video(user):
-    st.subheader("🎬 Birthday Video")
+    page_header("🎬 Birthday Video", "Photos se vertical video — music, zoom, confetti aur balloons ke saath")
     st.caption("Photos se vertical (WhatsApp/Reels size) video — intro, Ken-Burns zoom, confetti, balloons aur Happy Birthday tune.")
     name0, age0 = prefill(user)
     c1, c2 = st.columns([1, 1], gap="large")
@@ -1273,14 +1289,14 @@ def page_video(user):
 
 
 def page_gallery(user):
-    st.subheader("🗂️ Meri Gallery")
+    page_header("🗂️ Meri Gallery", "Aapki banayi sab cards, albums aur videos yahin hain")
     f = st.radio("Dikhao", ["all", "card", "album", "video"], horizontal=True, key="g_f",
                  format_func=lambda k: "Sab" if k == "all" else KIND_LABEL[k])
     render_gallery(user_creations(user["id"], None if f == "all" else f), "ug")
 
 
 def page_profile(user):
-    st.subheader("👤 Mera Profile")
+    page_header("👤 Mera Profile", "Apni jankari aur password yahan badlo")
     with st.form("prof"):
         name = st.text_input("Poora naam", user["full_name"] or "")
         try:
@@ -1315,21 +1331,23 @@ def password_form(user, key):
 
 
 def page_home(user):
-    st.subheader(f"Namaste, {(user['full_name'] or user['username']).split()[0]} 👋")
+    first = (user["full_name"] or user["username"]).split()[0]
     dl = days_to_birthday(user["dob"])
     if dl == 0:
         st.balloons()
-        st.success("🎉 Aaj aapka Birthday hai — Happy Birthday!")
+        count = '<div class="count"><b>🎉</b><span>Aaj aapka Birthday hai!</span></div>'
     elif dl is not None:
-        st.info(f"🎂 Aapke birthday me **{dl} din** baaki hain.")
+        count = f'<div class="count"><b>{dl}</b><span>din baaki aapke birthday me 🎂</span></div>'
     else:
-        st.warning("Profile me apna janamdin daalo — card/video me umar auto-fill ho jayegi.")
+        count = '<div class="count"><span>Profile me janamdin daalo — umar auto-fill ho jayegi</span></div>'
+    st.markdown(f'<div class="hero-big"><h1>Namaste, {first}! 👋</h1>'
+                f'<p>Aaj kya banayein? Card, Album ya Video — sab yahin.</p>{count}</div>', unsafe_allow_html=True)
+    feature_cards([("🎴", "Birthday Card", "Gol photo, balloons aur wish ke saath HD card. Left menu se 'Birthday Card' kholo."),
+                   ("📖", "Birthday Album", "Polaroid pages ka poora album — PDF me download karo."),
+                   ("🎬", "Birthday Video", "Photos + music + zoom effects — WhatsApp ke liye ready video.")])
     cnt = {k: len(user_creations(user["id"], k)) for k in KIND_LABEL}
-    c = st.columns(3)
-    for col, k in zip(c, KIND_LABEL):
-        col.metric(KIND_LABEL[k], cnt[k])
-    st.markdown("**Shuru kaise karein:** left menu se **Card**, **Album** ya **Video** chuno → photos daalo → ban gaya. "
-                "Sab kuch **Meri Gallery** me save rehta hai.")
+    stat_cards([("🎴", "Cards banaye", cnt["card"]), ("📖", "Albums banaye", cnt["album"]),
+                ("🎬", "Videos banaye", cnt["video"])])
 
 
 def user_panel(user):
@@ -1362,17 +1380,14 @@ def users_table(rows):
 
 
 def admin_dashboard():
-    st.subheader("📊 Dashboard")
+    page_header("📊 Dashboard", "Poore studio ka ek nazar me haal")
     rows = admin_users_rows()
     users = [r for r in rows if r["role"] == "user"]
     today = date.today().isoformat()
     kinds = {k: q("SELECT COUNT(*) n FROM creations WHERE kind=?", (k,), one=True)["n"] for k in KIND_LABEL}
-    c = st.columns(5)
-    c[0].metric("Total users", len(users))
-    c[1].metric("Aaj naye", sum(1 for r in users if (r["created_at"] or "").startswith(today)))
-    c[2].metric("🎴 Cards", kinds["card"])
-    c[3].metric("📖 Albums", kinds["album"])
-    c[4].metric("🎬 Videos", kinds["video"])
+    stat_cards([("👥", "Total users", len(users)),
+                ("🆕", "Aaj naye", sum(1 for r in users if (r["created_at"] or "").startswith(today))),
+                ("🎴", "Cards", kinds["card"]), ("📖", "Albums", kinds["album"]), ("🎬", "Videos", kinds["video"])], "g5")
 
     up = sorted([(days_to_birthday(r["dob"]), r) for r in users if days_to_birthday(r["dob"]) is not None],
                 key=lambda x: x[0])
@@ -1391,7 +1406,7 @@ def admin_dashboard():
 
 
 def admin_users():
-    st.subheader("👥 Sab Users")
+    page_header("👥 Sab Users", "Sab users ki jankari, edit, reset aur export")
     rows = admin_users_rows()
     search = st.text_input("🔎 Search (naam / username / phone / email)", key="adm_search").strip().lower()
     if search:
@@ -1460,7 +1475,7 @@ def admin_users():
 
 
 def admin_creations():
-    st.subheader("🖼️ Sab Creations")
+    page_header("🖼️ Sab Creations", "Har user ki banayi cards, albums aur videos")
     c1, c2 = st.columns(2)
     kind = c1.selectbox("Type", ["all", "card", "album", "video"], key="adm_kind",
                         format_func=lambda k: "Sab" if k == "all" else KIND_LABEL[k])
@@ -1479,7 +1494,7 @@ def admin_creations():
 
 
 def admin_new_user():
-    st.subheader("➕ Naya user / admin banao")
+    page_header("➕ Naya user / admin banao", "Naya account seedha admin se banao")
     with st.form("adm_new", clear_on_submit=True):
         c1, c2 = st.columns(2)
         name = c1.text_input("Poora naam")
@@ -1495,7 +1510,7 @@ def admin_new_user():
 
 
 def admin_settings(user):
-    st.subheader("⚙️ Settings")
+    page_header("⚙️ Settings", "Password aur storage ki jankari")
     if check_pw("admin123", user["pw_hash"], user["salt"]):
         st.warning("⚠️ Aap abhi default password (admin123) use kar rahe ho. Neeche se turant badlo.")
     password_form(user, "a")
@@ -1517,23 +1532,120 @@ def admin_panel(user):
 # =====================================================================
 CSS = """
 <style>
-#MainMenu, footer {visibility: hidden;}
-.block-container {padding-top: 1.4rem; max-width: 1200px;}
-.hero {text-align:center; padding: 6px 0 14px 0;}
-.hero h1 {font-size: 2.3rem; margin: 0; background: linear-gradient(90deg,#f472b6,#a78bfa,#fbbf24);
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;}
-.hero p {color:#94a3b8; margin: 4px 0 0 0;}
-.stDownloadButton button, .stLinkButton a {border-radius: 12px; font-weight: 600;}
-.role-chip {display:inline-block; padding:2px 10px; border-radius:999px; font-size:.75rem; font-weight:700;
-            background:linear-gradient(90deg,#a78bfa,#f472b6); color:#fff;}
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,700&display=swap');
+:root{--pink:#f472b6;--violet:#a78bfa;--gold:#fbbf24;--ink:#f5f3ff;--mute:#a8a3c7;
+      --card:rgba(255,255,255,.055);--line:rgba(255,255,255,.11);}
+html, body, [class*="css"], .stApp, button, input, textarea {font-family:'Poppins',sans-serif !important;}
+.stApp{background:radial-gradient(1100px 600px at 8% -5%,rgba(167,139,250,.28),transparent 60%),
+       radial-gradient(900px 520px at 100% 0%,rgba(244,114,182,.20),transparent 55%),
+       linear-gradient(180deg,#120a26 0%,#1a1038 55%,#0f0a1f 100%) !important;color:var(--ink);}
+.stApp, .stApp p, .stApp label, .stApp span, .stApp li, .stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5
+ {color:var(--ink);}
+.stApp small, [data-testid="stCaptionContainer"], .stApp [data-testid="stCaptionContainer"] p {color:var(--mute) !important;}
+#MainMenu, footer {visibility:hidden;}
+header[data-testid="stHeader"]{background:transparent;}
+.block-container{padding-top:1.6rem;max-width:1220px;}
+
+/* sidebar */
+section[data-testid="stSidebar"]{background:linear-gradient(180deg,#1b1040,#120a2a) !important;border-right:1px solid var(--line);}
+section[data-testid="stSidebar"] .stRadio label{border-radius:12px;padding:.45rem .7rem;transition:.15s;}
+section[data-testid="stSidebar"] .stRadio label:hover{background:rgba(255,255,255,.07);}
+.brand{font-weight:800;font-size:1.25rem;background:linear-gradient(90deg,#f472b6,#a78bfa,#fbbf24);
+       -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.4rem;}
+.me{display:flex;gap:.7rem;align-items:center;padding:.7rem;border-radius:16px;background:var(--card);border:1px solid var(--line);}
+.avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;
+        background:linear-gradient(135deg,#f472b6,#a78bfa);color:#fff;font-size:1.05rem;flex:none;}
+.me b{display:block;line-height:1.15}.me span.u{color:var(--mute);font-size:.78rem}
+.role-chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.66rem;font-weight:700;margin-left:6px;
+           background:linear-gradient(90deg,#a78bfa,#f472b6);color:#fff;vertical-align:middle;}
+
+/* page header */
+.ph{margin:.1rem 0 1.1rem 0;padding-bottom:.8rem;border-bottom:1px solid var(--line);}
+.ph h2{margin:0;font-size:1.75rem;font-weight:800;letter-spacing:-.01em;}
+.ph p{margin:.25rem 0 0 0;color:var(--mute);font-size:.95rem;}
+
+/* hero */
+.hero-big{position:relative;overflow:hidden;border-radius:26px;padding:2rem 2.2rem;margin-bottom:1.2rem;
+  background:linear-gradient(120deg,rgba(124,58,237,.75),rgba(244,114,182,.65));border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 20px 60px -20px rgba(124,58,237,.7);}
+.hero-big:after{content:"🎈 🎉 ✨";position:absolute;right:1.6rem;top:.8rem;font-size:2.2rem;opacity:.9;letter-spacing:.3rem;}
+.hero-big h1{margin:0;font-size:2.1rem;font-weight:800;color:#fff;}
+.hero-big p{margin:.35rem 0 0 0;color:#ffeefa;font-size:1.02rem;}
+.count{display:inline-flex;align-items:baseline;gap:.5rem;margin-top:1rem;padding:.55rem 1.1rem;border-radius:999px;
+       background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.25);}
+.count b{font-size:1.9rem;color:var(--gold);line-height:1}.count span{color:#fff;font-size:.95rem}
+
+/* stat + feature cards */
+.grid{display:grid;gap:1rem;margin:.4rem 0 1.1rem 0;}
+.g3{grid-template-columns:repeat(3,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
+@media(max-width:900px){.g3,.g5{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.g3,.g5{grid-template-columns:1fr}}
+.stat{padding:1.1rem 1.2rem;border-radius:20px;background:var(--card);border:1px solid var(--line);transition:.2s;}
+.stat:hover{transform:translateY(-3px);border-color:rgba(244,114,182,.5);}
+.stat .ic{font-size:1.5rem}.stat .v{font-size:2rem;font-weight:800;line-height:1.1;margin-top:.25rem;
+       background:linear-gradient(90deg,#fff,#fbcfe8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.stat .l{color:var(--mute);font-size:.85rem}
+.feat{padding:1.3rem;border-radius:22px;border:1px solid var(--line);min-height:150px;
+      background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.025));transition:.2s;}
+.feat:hover{transform:translateY(-4px);box-shadow:0 18px 40px -18px rgba(244,114,182,.55);}
+.feat .ic{font-size:2.1rem}.feat h4{margin:.5rem 0 .2rem 0;font-size:1.1rem}.feat p{margin:0;color:var(--mute);font-size:.88rem}
+
+/* auth */
+.auth-left h1{font-size:3rem;line-height:1.05;margin:0;font-weight:800;
+   background:linear-gradient(90deg,#f472b6,#a78bfa,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.auth-left .tag{font-family:'Playfair Display',serif;font-style:italic;font-size:1.4rem;color:#fde68a;margin:.5rem 0 1.4rem 0}
+.pill{display:flex;gap:.8rem;align-items:center;padding:.8rem 1rem;margin:.55rem 0;border-radius:16px;
+      background:var(--card);border:1px solid var(--line);}
+.pill .ic{font-size:1.6rem}.pill b{display:block}.pill span{color:var(--mute);font-size:.85rem}
+
+/* widgets */
+.stButton>button,.stDownloadButton>button,.stLinkButton>a,[data-testid="stFormSubmitButton"]>button{
+  border-radius:12px !important;font-weight:600 !important;border:1px solid var(--line) !important;transition:.15s;}
+.stButton>button:hover,.stDownloadButton>button:hover,.stLinkButton>a:hover{transform:translateY(-2px);border-color:var(--pink) !important;}
+button[kind="primary"],button[data-testid="stBaseButton-primary"],[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"]{
+  background:linear-gradient(90deg,#ec4899,#8b5cf6) !important;border:none !important;color:#fff !important;
+  box-shadow:0 10px 24px -10px rgba(236,72,153,.8);}
+.stTextInput input,.stTextArea textarea,.stNumberInput input,.stDateInput input,[data-baseweb="select"]>div{
+  border-radius:12px !important;background:rgba(255,255,255,.06) !important;border:1px solid var(--line) !important;color:var(--ink) !important;}
+.stTabs [data-baseweb="tab-list"]{gap:.4rem;background:var(--card);padding:.3rem;border-radius:14px;border:1px solid var(--line);}
+.stTabs [data-baseweb="tab"]{border-radius:10px;padding:.4rem 1rem;height:auto;}
+.stTabs [aria-selected="true"]{background:linear-gradient(90deg,#ec4899,#8b5cf6);color:#fff !important;}
+.stTabs [data-baseweb="tab-highlight"],.stTabs [data-baseweb="tab-border"]{display:none;}
+[data-testid="stForm"]{border-radius:20px;background:var(--card);border:1px solid var(--line);padding:1.2rem;}
+[data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stVerticalBlock"] .stImage){border-radius:20px;}
+[data-testid="stExpander"]{border-radius:14px;border:1px solid var(--line);background:var(--card);}
+[data-testid="stFileUploaderDropzone"]{border-radius:16px;border:2px dashed rgba(244,114,182,.5);background:rgba(244,114,182,.05);}
+[data-testid="stImage"] img,video{border-radius:16px;}
+[data-testid="stDataFrame"]{border-radius:16px;overflow:hidden;border:1px solid var(--line);}
+hr{border-color:var(--line) !important;}
+.stProgress>div>div>div>div{background:linear-gradient(90deg,#ec4899,#8b5cf6);}
+
+/* force dark look even without config.toml */
+[data-baseweb="popover"],[data-baseweb="popover"] ul,[data-baseweb="menu"],ul[role="listbox"],[data-baseweb="calendar"]{
+  background:#1f1245 !important;color:var(--ink) !important;}
+[data-baseweb="popover"] *,[data-baseweb="select"] *,[data-baseweb="calendar"] *{color:var(--ink) !important;}
+li[role="option"]:hover,[aria-selected="true"][role="option"]{background:rgba(167,139,250,.25) !important;}
+[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,.stRadio label p,.stCheckbox label p,
+[data-testid="stExpander"] summary p,[data-testid="stFileUploaderDropzone"] *,[data-testid="stMarkdownContainer"] p,
+[data-testid="stMetricValue"],[data-testid="stAlertContainer"] p{color:var(--ink) !important;}
+[data-testid="stFileUploaderDropzone"] small{color:var(--mute) !important;}
+.stButton>button,.stDownloadButton>button,.stLinkButton>a{background:rgba(255,255,255,.07) !important;color:var(--ink) !important;}
+.stNumberInput button{background:rgba(255,255,255,.08) !important;color:var(--ink) !important;}
+[data-testid="stToolbar"],[data-testid="stToolbar"] *{color:var(--ink) !important;}
 </style>
 """
 
 
 def auth_page():
-    st.markdown('<div class="hero"><h1>🎂 Birthday Studio</h1>'
-                '<p>Apni ID banao — Birthday Card, Album aur Video, sab ek jagah</p></div>', unsafe_allow_html=True)
-    _, mid, _ = st.columns([1, 1.5, 1])
+    left, mid = st.columns([1.15, 1], gap="large")
+    with left:
+        st.markdown(
+            '<div class="auth-left"><h1>Birthday<br>Studio</h1><div style="font-size:2.6rem;margin-top:-.2rem">🎂</div>'
+            '<div class="tag">Har yaad, ek khoobsurat tohfa</div>'
+            '<div class="pill"><div class="ic">🎴</div><div><b>Birthday Card</b><span>HD card, apni photo ke saath</span></div></div>'
+            '<div class="pill"><div class="ic">📖</div><div><b>Birthday Album</b><span>Polaroid pages, PDF download</span></div></div>'
+            '<div class="pill"><div class="ic">🎬</div><div><b>Birthday Video</b><span>Music + zoom + confetti wala video</span></div></div>'
+            '</div>', unsafe_allow_html=True)
     with mid:
         t1, t2 = st.tabs(["🔑 Login", "✨ Naya account"])
         with t1:
@@ -1571,7 +1683,20 @@ def auth_page():
                             st.error(msg)
 
 
+def ensure_theme_config():
+    """Dark theme config khud bana do (agle restart se pakka lagta hai). CSS is ke bina bhi dark look deta hai."""
+    try:
+        cfg = Path.cwd() / ".streamlit" / "config.toml"
+        if not cfg.exists():
+            cfg.parent.mkdir(exist_ok=True)
+            cfg.write_text('[theme]\nbase = "dark"\nprimaryColor = "#ec4899"\nbackgroundColor = "#140b2b"\n'
+                           'secondaryBackgroundColor = "#1f1245"\ntextColor = "#f5f3ff"\n')
+    except Exception:
+        pass
+
+
 def main():
+    ensure_theme_config()
     st.set_page_config(page_title="Birthday Studio", page_icon="🎂", layout="wide")
     st.markdown(CSS, unsafe_allow_html=True)
     init_db()
@@ -1584,11 +1709,13 @@ def main():
         auth_page()
         return
     with st.sidebar:
-        st.markdown(f"### 🎂 Birthday Studio")
-        st.markdown(f"**{user['full_name']}**  \n@{user['username']}  "
-                    f"<span class='role-chip'>{'ADMIN' if user['role'] == 'admin' else 'USER'}</span>",
+        st.markdown('<div class="brand">🎂 Birthday Studio</div>', unsafe_allow_html=True)
+        ini = (user["full_name"] or user["username"])[:1].upper()
+        chip = "ADMIN" if user["role"] == "admin" else "USER"
+        st.markdown(f'<div class="me"><div class="avatar">{ini}</div><div><b>{user["full_name"]}'
+                    f'<span class="role-chip">{chip}</span></b><span class="u">@{user["username"]}</span></div></div>',
                     unsafe_allow_html=True)
-        st.divider()
+        st.write("")
     if user["role"] == "admin":
         admin_panel(user)
     else:
