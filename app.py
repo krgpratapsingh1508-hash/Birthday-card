@@ -1439,13 +1439,13 @@ def admin_users_rows():
         (SELECT COUNT(*) FROM creations c WHERE c.user_id=u.id AND c.kind='card')  AS cards,
         (SELECT COUNT(*) FROM creations c WHERE c.user_id=u.id AND c.kind='album') AS albums,
         (SELECT COUNT(*) FROM creations c WHERE c.user_id=u.id AND c.kind='video') AS videos
-        FROM users u ORDER BY u.id DESC""")
+        FROM users u ORDER BY u.id ASC""")
 
 
 def users_table(rows):
     out = []
-    for r in rows:
-        out.append({"Photo": photo_uri(r["id"], 64), "ID": r["id"], "Naam": r["full_name"], "Username": r["username"], "Role": r["role"],
+    for n, r in enumerate(rows, start=1):
+        out.append({"No.": n, "Photo": photo_uri(r["id"], 64), "Naam": r["full_name"], "Username": r["username"], "Role": r["role"],
                     "Janamdin": r["dob"], "Umar": calc_age(r["dob"]), "Phone": r["phone"], "Email": r["email"],
                     "Joined": (r["created_at"] or "")[:10], "Last login": (r["last_login"] or "")[:16].replace("T", " "),
                     "Active": "Haan" if r["active"] else "Nahi",
